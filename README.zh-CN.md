@@ -138,7 +138,12 @@ npm run dev      # 开发模式，热更新
 npm run dist     # 打包 NSIS 安装包 + 便携版 exe
 ```
 
-产物输出到 `package.json` 中配置的 `out*/` 目录。
+产物输出到 `release/` 目录：
+
+- `JunctionBox-Setup-x64.exe` — NSIS 安装包
+- `JunctionBox-Portable-x64.exe` — 便携单文件
+
+`npm run dist:dir` 只打包目录、不生成安装包，产物在 `release/win-unpacked/`，适合快速验证。
 
 ## 常见问题
 
@@ -160,7 +165,7 @@ npm run dist     # 打包 NSIS 安装包 + 便携版 exe
 
 ## 路线图
 
-- [ ] GitHub Actions 自动构建与发布
+- [x] GitHub Actions 自动构建与发布（推送 `v*` 标签触发）
 - [ ] 代码签名，消除 SmartScreen 提示
 - [ ] 英文界面（当前为简体中文）
 - [ ] 按项目固定版本

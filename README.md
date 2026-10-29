@@ -127,7 +127,12 @@ npm run dev        # develop with hot reload
 npm run dist       # build NSIS installer + portable exe
 ```
 
-Artifacts are written to the `out*/` directory configured in `package.json`.
+Artifacts are written to `release/`:
+
+- `JunctionBox-Setup-x64.exe` — NSIS installer
+- `JunctionBox-Portable-x64.exe` — portable single file
+
+`npm run dist:dir` skips packaging and only produces `release/win-unpacked/` for quick testing.
 
 ## FAQ
 
@@ -145,7 +150,7 @@ They can coexist. JunctionBox detects their install directories. Just don't let 
 
 ## Roadmap
 
-- [ ] GitHub Actions build + automatic Release publishing
+- [x] GitHub Actions build + automatic Release publishing on tag push
 - [ ] Code signing to remove SmartScreen warnings
 - [ ] English UI (currently Simplified Chinese)
 - [ ] Per-project version pinning
