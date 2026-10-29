@@ -1,5 +1,5 @@
 <script setup>
-import { computed, onMounted, onUnmounted } from "vue";
+import { computed, ref, onMounted, onUnmounted } from "vue";
 import {
   S,
   closeStore,
@@ -12,6 +12,7 @@ import {
   switchJdk,
   switchNode,
 } from "../store.js";
+import ConfirmDialog from "./ConfirmDialog.vue";
 
 // 直接绑到全局状态：由 JdkView / NodeView 决定打开时看哪个页签
 const kind = computed({
@@ -71,8 +72,22 @@ function cancel(it) {
 function sw(it) {
   kind.value === "jdk" ? switchJdk(it.installedPath) : switchNode(it.installedPath);
 }
+// 删除是不可恢复的物理删除（不进回收站），所以必须先确认一次
+const pending = ref(null);
+const pendingName = computed(() => {
+  const it = pending.value;
+  if (!it) return "";
+  const base = (it.installedPath || "").split(/[\\/]/).filter(Boolean).pop() || "";
+  return [it.installedVer || it.label || "", base].filter(Boolean).join(" · ");
+});
+
 function rm(it) {
-  removeRuntime({ ...it, kind: kind.value });
+  pending.value = it;
+}
+function doRemove() {
+  const it = pending.value;
+  pending.value = null;
+  if (it) removeRuntime({ ...it, kind: kind.value });
 }
 function retry(it) {
   delete S.dl[it.id];
@@ -204,6 +219,20 @@ onUnmounted(() => window.removeEventListener("keydown", onKey));
         </div>
       </div>
     </Transition>
+
+    <!-- 删除不可撤销（不走回收站），先让人确认一次 -->
+    <ConfirmDialog
+      :open="!!pending"
+      title="删除这个版本？"
+      :message="
+        pendingName +
+        ' 会从版本库里彻底删除，不进回收站，也无法恢复。需要时可以在版本库重新下载安装。'
+      "
+      ok-text="删除"
+      danger
+      @close="pending = null"
+      @ok="doRemove"
+    />
   </Teleport>
 </template>
 

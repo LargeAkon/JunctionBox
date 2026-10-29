@@ -34,7 +34,8 @@ const emit = defineEmits(["close", "ok"]);
 .scrim {
   position: fixed;
   inset: 0;
-  z-index: 100;
+  /* 确认层必须压在所有业务弹层之上：版本库 120、安装位置 140 */
+  z-index: 400;
   display: grid;
   place-items: center;
   background: rgba(0, 0, 0, 0.24);

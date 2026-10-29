@@ -5,6 +5,22 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [4.1.1] - 2026-10-29
+
+Deleting a runtime no longer happens on a single click.
+
+### Added
+
+- **Confirmation before a runtime is deleted.** The dialog names the exact version and
+  folder (`21.0.13 · zulu-21.0.13`) and says outright that the files are removed for
+  good — no Recycle Bin, no undo — and that the version can be downloaded again from
+  the store. Previously one click on *删除* erased a 300 MB JDK instantly.
+
+### Fixed
+
+- `ConfirmDialog` was pinned at `z-index: 100`, underneath the runtime store (120) and
+  the install-location dialog (140), so it could not appear on top of them.
+
 ## [4.1.0] - 2026-10-29
 
 Installs stop assuming the C drive. Before downloading anything, JunctionBox now asks
