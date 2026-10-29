@@ -1,0 +1,75 @@
+{
+  "name": "junctionbox",
+  "version": "3.0.6",
+  "description": "Windows developer toolbox — port inspector and instant JDK/Node version switching via NTFS junctions",
+  "main": "electron/main.cjs",
+  "author": {
+    "name": "LargeAkon",
+    "url": "https://github.com/LargeAkon"
+  },
+  "license": "MIT",
+  "homepage": "https://github.com/LargeAkon/JunctionBox#readme",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/LargeAkon/JunctionBox.git"
+  },
+  "bugs": {
+    "url": "https://github.com/LargeAkon/JunctionBox/issues"
+  },
+  "keywords": [
+    "windows",
+    "jdk",
+    "nodejs",
+    "version-manager",
+    "port-scanner",
+    "junction",
+    "electron",
+    "developer-tools"
+  ],
+  "scripts": {
+    "dev": "node scripts/dev.mjs",
+    "build": "vite build",
+    "dist": "vite build && electron-builder --win --x64",
+    "dist:dir": "vite build && electron-builder --win --x64 --dir"
+  },
+  "dependencies": {
+    "vue": "^3.5.29"
+  },
+  "devDependencies": {
+    "@vitejs/plugin-vue": "^6.0.4",
+    "concurrently": "^9.2.1",
+    "electron": "^44.9.0",
+    "electron-builder": "^26.15.3",
+    "vite": "^8.3.4"
+  },
+  "build": {
+    "appId": "com.github.largeakon.junctionbox",
+    "productName": "JunctionBox",
+    "files": [
+      "dist/**/*",
+      "electron/**/*"
+    ],
+    "win": {
+      "target": [
+        { "target": "nsis", "arch": ["x64"] },
+        { "target": "portable", "arch": ["x64"] }
+      ],
+      "icon": "build/icon.ico"
+    },
+    "nsis": {
+      "oneClick": false,
+      "perMachine": false,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true,
+      "shortcutName": "JunctionBox",
+      "artifactName": "JunctionBox-Setup-x64.${ext}"
+    },
+    "portable": {
+      "artifactName": "JunctionBox-Portable-x64.${ext}"
+    },
+    "directories": {
+      "output": "release"
+    }
+  }
+}
