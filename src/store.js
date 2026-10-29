@@ -21,6 +21,11 @@ export const S = reactive({
 
   busy: "",
   toast: { text: "", type: "info", id: 0 },
+
+  // 版本库（内置清单 + 按需下载）
+  store: { open: false, kind: "jdk", loading: false, jdk: [], node: [], roots: {} },
+  // 安装进度：id -> { phase, pct, got, total, speed, error, source }
+  dl: {},
 });
 
 // 便于调试与自动化验收：把响应式状态挂到 window（不影响 contextIsolation）
@@ -48,6 +53,17 @@ export async function boot() {
   window.api.onTheme(({ dark }) => {
     S.dark = dark;
     document.documentElement.classList.toggle("dark", dark);
+  });
+
+  window.api.onProgress?.((p) => {
+    if (!p || !p.id) return;
+    S.dl[p.id] = { ...(S.dl[p.id] || {}), ...p };
+    if (p.phase === "done") {
+      // 兜底清理：正常路径由 installRuntime 在刷新列表后主动删除
+      setTimeout(() => {
+        if (S.dl[p.id]?.phase === "done") delete S.dl[p.id];
+      }, 2500);
+    }
   });
 
   await Promise.all([refreshPorts(true), refreshEnv()]);
@@ -177,4 +193,84 @@ export async function killProc(pid, name) {
   } else {
     toast("结束失败：" + (r.err || ""), "error");
   }
+}
+
+// ---------------------------------------------------------------- 版本库
+const errText = (e) => String((e && e.message) || e || "");
+
+/** 拉取内置清单 + 本机已装情况（按大版本匹配，避免重复下载同主版本） */
+export async function loadStore() {
+  if (!window.api?.storeList) return;
+  S.store.loading = true;
+  try {
+    const r = await window.api.storeList();
+    S.store.jdk = r.jdk || [];
+    S.store.node = r.node || [];
+    S.store.roots = r.roots || {};
+  } catch (e) {
+    toast("读取版本库失败：" + errText(e), "error");
+  } finally {
+    S.store.loading = false;
+  }
+}
+
+export function openStore(kind) {
+  S.store.kind = kind === "node" ? "node" : "jdk";
+  S.store.open = true;
+  loadStore();
+}
+
+export function closeStore() {
+  S.store.open = false;
+}
+
+/**
+ * 安装一个运行时。
+ * 装完立刻切过去——用户点「安装」的意图就是「让我能用这个版本」，
+ * 再让他回列表点一次切换是多余的一步。
+ */
+export async function installRuntime(item) {
+  const id = item.id;
+  if (S.dl[id] && ["download", "extract"].includes(S.dl[id].phase)) return;
+  S.dl[id] = { phase: "download", pct: 0, got: 0, total: 0, speed: 0 };
+  try {
+    const r = await window.api.installRuntime(item.kind, id);
+    if (!r.ok) {
+      if (r.cancelled) {
+        delete S.dl[id];
+        toast("已取消安装", "info");
+        return;
+      }
+      S.dl[id] = { ...(S.dl[id] || {}), phase: "error", error: r.err };
+      toast("安装失败：" + (r.err || "未知错误"), "error");
+      return;
+    }
+    await refreshEnv();
+    await loadStore();
+    delete S.dl[id];
+    if (item.kind === "jdk") await switchJdk(r.path);
+    else await switchNode(r.path);
+  } catch (e) {
+    delete S.dl[id];
+    toast("安装失败：" + errText(e), "error");
+  }
+}
+
+export async function cancelInstall(id) {
+  try {
+    await window.api.cancelInstall(id);
+  } catch (e) {
+    /* ignore */
+  }
+}
+
+export async function removeRuntime(item) {
+  const r = await window.api.removeRuntime(item.kind, item.installedPath);
+  if (!r.ok) {
+    toast(r.err || "删除失败", "error");
+    return;
+  }
+  await refreshEnv();
+  await loadStore();
+  toast("已删除 " + item.label, "ok");
 }

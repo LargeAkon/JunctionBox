@@ -4,7 +4,7 @@
 
 **一次配置，毫秒切换。**
 
-Windows 开发者桌面工具箱：端口占用排查、JDK / Node.js 版本一键切换。
+Windows 开发者桌面工具箱：端口占用排查、JDK / Node.js 版本一键安装与切换。
 **不写注册表，不用重启资源管理器，不需要管理员权限。**
 
 [English](./README.md) · [下载](https://github.com/LargeAkon/JunctionBox/releases) · [架构与原理](./docs/ARCHITECTURE.md)
@@ -36,6 +36,7 @@ JunctionBox 把这两件事做成点一下鼠标。其中版本切换用的是 *
 | 模块 | 能力 |
 |---|---|
 | **端口检测** | 扫描监听端口，把 PID 解析成进程名与完整命令行，一键结束进程 |
+| **版本库** | 内置 JDK（8/11/17/21/25）与 Node（20/22/24/26）清单，选中即下载、解压、切换，不用开浏览器、不用手工解压 |
 | **JDK 切换** | 自动发现已安装 JDK，显示版本与厂商，一键切换 `JAVA_HOME` 与 `Path` |
 | **Node 切换** | 自动发现 Node 安装，显示版本、架构、自带 npm 版本，一键切换 |
 | **PATH 编辑** | 为每种运行时添加/删除 PATH 目录，带目录选择器 |
@@ -61,6 +62,12 @@ JunctionBox 把这两件事做成点一下鼠标。其中版本切换用的是 *
     <td align="center"><sub><b>Node 切换</b> — 版本、架构与内置 npm 版本</sub></td>
     <td align="center"><sub><b>环境概览</b> — JAVA_HOME 解析结果、当前运行时、状态栏</sub></td>
   </tr>
+  <tr>
+    <td colspan="2"><img src="docs/screenshots/5-store.png" alt="版本库" /></td>
+  </tr>
+  <tr>
+    <td colspan="2" align="center"><sub><b>版本库</b> — 不用离开程序就能装一个新版本</sub></td>
+  </tr>
 </table>
 
 ## 下载与安装
@@ -82,7 +89,8 @@ JunctionBox 把这两件事做成点一下鼠标。其中版本切换用的是 *
 1. 双击 `JunctionBox-Portable-x64.exe`。
 2. **端口**页查看当前谁在监听哪些端口。
 3. 打开 **JDK** 或 **Node** 页，选中版本，点击切换。
-4. **新开一个终端**，执行 `java -version` / `node -v` 验证。
+4. 只有一个版本、没得切？点右上角 **版本库**，装一个别的版本，装完自动切过去。
+5. **新开一个终端**，执行 `java -version` / `node -v` 验证。
 
 > **必须新开终端。** 已经打开的终端、IDE 内置终端继承的是启动时的环境变量，
 > 这是 Windows 的机制，不是工具的问题。
@@ -98,6 +106,33 @@ JunctionBox 把这两件事做成点一下鼠标。其中版本切换用的是 *
 
 **没扫到？** 在界面里点「添加路径」手动登记任意目录。
 自定义路径保存在 `%APPDATA%\JavaDevTool\`，每次扫描都会合并进来。
+
+## 版本库
+
+大多数机器上只装了一个 JDK 和一个 Node——那就没什么可切的了。
+两个版本页右上角的 **版本库** 就是补这一环：选一个版本，下载、解压、切换一次做完。
+
+| | 内置版本 |
+|---|---|
+| JDK | 8、11、17、21、25（Azul Zulu，x64） |
+| Node.js | 20、22、24、26（当前 LTS 线） |
+
+为什么安装包还是 108MB，而不是 600MB：
+
+- 清单里只有**元数据**（版本、体积、下载地址），二进制按需下载（Node 约 35MB、JDK 约 190MB），
+  解压用 Windows 10 1803+ 自带的 `tar.exe`（bsdtar），实测 190MB 的包 **1 秒**解完。
+- 每个版本都有**备用源**：JDK 走 Azul CDN → 清华镜像，Node 走 npmmirror → 清华 → 官方源。
+  谁先响应就用谁，单个站点被墙不影响功能。
+- 全部装在 `%LOCALAPPDATA%\JavaDevTool\runtimes\`，用户级目录，**不弹 UAC**，不碰 `Program Files`。
+- 下载会校验字节数是否完整；解压先进临时目录，确认 `bin\java.exe`（或 `node.exe`）存在后才挪到正式位置。
+  中途取消或失败，不会在列表里留下半个 JDK。
+- 你已经装过同一个大版本？版本库会显示「已安装」并让你直接切换，不会再下 190MB 重装一份。
+
+想把文件放到别的盘：新建 `%APPDATA%\JavaDevTool\runtimes.txt`，第一行写一个绝对路径，
+`jdk\` 与 `node\` 会建在它下面。
+
+> 清单更新：`npm run catalog:update` 会重新读取 Azul 元数据接口与 npmmirror 索引，
+> 重写 `electron/catalog.cjs`。
 
 ## 切换原理
 
@@ -133,15 +168,19 @@ JunctionBox：
 ```
 electron/
   main.cjs      窗口创建、Mica、IPC 注册、启动自愈、GPU 降级
-  core.cjs      端口扫描、版本发现、联接操作、环境变量读写（约 950 行）
+  core.cjs      端口扫描、版本发现、联接操作、环境变量读写
+  catalog.cjs   内置 JDK / Node 清单（元数据 + 镜像地址，不含二进制）
+  installer.cjs 下载 → 校验 → 解压 → 原子落位，支持取消
   preload.cjs   contextBridge 暴露 window.api
 src/
   App.vue       自绘标题栏、导航、状态栏
   views/        PortsView（端口）、JdkView、NodeView、AboutView
-  components/   VersionPanel（版本切换面板）、ConfirmDialog
+  components/   VersionPanel（版本切换）、RuntimeStore（版本库）、ConfirmDialog
   store.js      共享响应式状态
   style.css     Fluent 2 设计令牌与元素级动效
-scripts/dev.mjs 开发启动脚本
+scripts/
+  dev.mjs            开发启动脚本
+  update-catalog.cjs 从上游元数据重新生成 catalog.cjs
 ```
 
 核心业务逻辑集中在 `electron/core.cjs`，界面与系统调用通过 IPC 完全隔离，
@@ -182,15 +221,32 @@ npm run dist     # 打包 NSIS 安装包 + 便携版 exe
 **和 nvm-windows / Volta 冲突吗？**
 可以共存，工具会识别它们的安装目录。但不要让两个工具同时管理同一个 PATH 条目。
 
+**为什么不把 JDK / Node 直接打进安装包？**
+那会把 108MB 的工具变成 600MB 的下载。一个 JDK 压缩后 190MB，清单覆盖五个；
+九个运行时全打包，每次发版都要传几百 MB，而且用户只能用它打包时的那几个版本。
+「元数据 + 按需下载」是 nvm、fnm、sdkman 的共同做法，原因一样。
+
+**版本库需要联网吗？**
+需要，这就是上面那个取舍。除此之外的功能（端口扫描、切换、版本发现）完全离线可用。
+
+**下载的 JDK / Node 装在哪？**
+`%LOCALAPPDATA%\JavaDevTool\runtimes\{jdk,node}`。不写系统目录、不弹 UAC。
+想换盘就改 `%APPDATA%\JavaDevTool\runtimes.txt`。
+
+**能删掉下载的版本吗？**
+能，点「删除」。但只对版本库自己装的版本生效，且当前正在使用的不允许删；
+你自己装的 JDK 永远不会被这个按钮碰到。
+
 **杀毒软件报毒？**
 未签名的 Electron 程序容易被启发式引擎误报。源码在此，可自行审计后构建。
 
 ## 路线图
 
 - [x] GitHub Actions 自动构建与发布（推送 `v*` 标签触发）
+- [x] 内置版本库，JDK / Node 按需下载安装
 - [ ] 代码签名，消除 SmartScreen 提示
 - [ ] 英文界面（当前为简体中文）
-- [ ] 按项目固定版本
+- [ ] 按项目固定版本（`.java-version` / `.nvmrc`）
 - [ ] 环境配置导出 / 导入
 
 ## 参与贡献

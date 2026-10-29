@@ -4,6 +4,8 @@ const path = require("path");
 const os = require("os");
 const fs = require("fs");
 const core = require("./core.cjs");
+const catalog = require("./catalog.cjs");
+const installer = require("./installer.cjs");
 
 const isDev = !!process.env.VITE_DEV_SERVER_URL;
 const APP_NAME = "JunctionBox";
@@ -154,6 +156,28 @@ function createWindow() {
           const img = await win.webContents.capturePage();
           fs.writeFileSync(path.join(outDir, `${i + 1}-${shots[i]}.png`), img.toPNG());
         }
+
+        // 版本库面板：切到 JDK 页 → 点「版本库」→ 截图
+        await win.webContents.executeJavaScript(
+          `document.querySelectorAll('.navitem')[1]?.click(); true;`
+        );
+        await new Promise((r) => setTimeout(r, 700));
+        await win.webContents
+          .executeJavaScript(
+            `(() => {
+              const b = [...document.querySelectorAll('.btn')].find((x) => x.innerText.trim() === '版本库');
+              if (b) b.click();
+              return { found: !!b, open: !!(window.__JDT && window.__JDT.store.open) };
+            })()`
+          )
+          .then((v) => console.log("[store]", JSON.stringify(v)));
+        await new Promise((r) => setTimeout(r, 1600));
+        const shot5 = await win.webContents.capturePage();
+        fs.writeFileSync(path.join(outDir, "5-store.png"), shot5.toPNG());
+        const errs = await win.webContents
+          .executeJavaScript("(window.__errs || []).slice(0, 6)")
+          .catch(() => []);
+        console.log("[store] errs", JSON.stringify(errs));
       } catch (e) {
         console.error("[shot] failed", e);
       }
@@ -222,6 +246,61 @@ async function guardedSwitch(fn) {
 }
 ipcMain.handle("jdk:switch", (_e, p) => guardedSwitch(() => core.switchJdk(p)));
 ipcMain.handle("node:switch", (_e, p) => guardedSwitch(() => core.switchNode(p)));
+
+// ---------------------------------------------------------------- 版本库
+const major = (v) => String(v || "").replace(/^1\./, "").split(/[._]/)[0];
+
+/**
+ * 版本库列表 = 内置清单 + 本机已装情况。
+ * 匹配按「大版本」算：用户已有 Temurin 17.0.20 时，清单里的 JDK 17 显示为
+ * 「已安装 17.0.20」，不会再让人多下 190MB 装一个功能完全一样的 17.0.21。
+ */
+ipcMain.handle("store:list", async () => {
+  installer.cleanStale("jdk");
+  installer.cleanStale("node");
+  const [jdks, nodes] = await Promise.all([core.findJdks(), core.findNodes()]);
+  const build = (kind, arr) =>
+    catalog.list(kind).map((it) => {
+      const hit = arr.find((x) => major(x.ver) === String(it.feature));
+      return {
+        ...it,
+        installedPath: hit ? hit.path : "",
+        installedVer: hit ? hit.ver : "",
+      };
+    });
+  return {
+    jdk: build("jdk", jdks),
+    node: build("node", nodes),
+    roots: { jdk: installer.runtimeRoot("jdk"), node: installer.runtimeRoot("node") },
+  };
+});
+
+// 同一时刻只跑一个安装：并发下载会互相抢带宽，进度也没法看
+let installing = "";
+ipcMain.handle("store:install", async (_e, kind, id) => {
+  if (installing) return { ok: false, err: "已有版本正在安装，请等它完成" };
+  const item = catalog.find(kind, id);
+  if (!item) return { ok: false, err: "清单里没有这个版本" };
+  installing = id;
+  try {
+    const r = await installer.install(kind, item, (p) => {
+      if (win && !win.isDestroyed()) win.webContents.send("install:progress", p);
+    });
+    return r;
+  } finally {
+    installing = "";
+  }
+});
+
+ipcMain.handle("store:cancel", (_e, id) => ({ ok: installer.cancel(id) }));
+
+ipcMain.handle("store:remove", (_e, kind, dir) => {
+  const link = kind === "jdk" ? core.jdkLink() : core.nodeLink();
+  const active = core.linkTarget(link);
+  const same = (a, b) => a && b && path.normalize(a).toLowerCase() === path.normalize(b).toLowerCase();
+  if (same(active, dir)) return { ok: false, err: "该版本正在使用，请先切换到其他版本" };
+  return installer.uninstall(kind, dir);
+});
 
 ipcMain.handle("path:add", (_e, kind, dir) => {
   const file = kind === "jdk" ? "paths.txt" : "node_paths.txt";

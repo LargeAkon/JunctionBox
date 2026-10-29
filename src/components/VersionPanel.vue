@@ -5,6 +5,7 @@ const props = defineProps({
   title: String,
   subtitle: String,
   icon: { type: String, default: "jdk" },
+  family: { type: String, default: "" },
   currentVer: String,
   currentPath: String,
   noteLabel: String,
@@ -13,7 +14,7 @@ const props = defineProps({
   busy: Boolean,
   emptyText: { type: String, default: "未检测到已安装的版本" },
 });
-const emit = defineEmits(["refresh", "add", "switch"]);
+const emit = defineEmits(["refresh", "add", "switch", "store"]);
 
 const sel = ref("");
 
@@ -41,6 +42,10 @@ function doSwitch() {
         <p>{{ subtitle }}</p>
       </div>
       <div class="ph-act">
+        <button class="btn primary-soft" @click="emit('store')">
+          <svg class="icon" viewBox="0 0 24 24"><path d="M4 7h16v10H4z"/><path d="M12 4v3M9 12h6"/></svg>
+          版本库
+        </button>
         <button class="btn" @click="emit('add')">
           <svg class="icon" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg>
           添加目录
@@ -63,6 +68,19 @@ function doSwitch() {
         <div class="cur-path selectable">{{ currentPath || "PATH 中未找到可执行文件" }}</div>
         <div v-if="noteValue" class="cur-note">{{ noteLabel }} <b class="selectable">{{ noteValue }}</b></div>
       </div>
+    </div>
+
+    <!-- 只有 0~1 个版本时的引导：这正是版本库存在的理由 -->
+    <div v-if="items.length <= 1" class="guide">
+      <svg class="gicon" viewBox="0 0 24 24">
+        <circle cx="12" cy="12" r="9" />
+        <path d="M12 8h.01M11 12h1v4h1" />
+      </svg>
+      <div class="gtext">
+        <b>只检测到 {{ items.length }} 个 {{ family }} 版本</b>
+        <span>没有可切换的对象。从版本库安装另一个版本，之后就能一键切换。</span>
+      </div>
+      <button class="btn sm" @click="emit('store')">打开版本库</button>
     </div>
 
     <!-- 版本列表 -->
@@ -211,6 +229,49 @@ h1 {
   font-weight: 500;
   color: var(--text-2);
 }
+/* 单版本引导条 */
+.guide {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin: 0 4px 14px;
+  padding: 12px 16px;
+  border-radius: var(--radius);
+  border: 1px dashed var(--accent-stroke);
+  background: color-mix(in srgb, var(--accent) 4%, transparent);
+}
+.gicon {
+  flex: none;
+  width: 18px;
+  height: 18px;
+  stroke: var(--accent);
+  fill: none;
+  stroke-width: 1.7;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+.gtext {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.gtext b {
+  font-size: 12.5px;
+  font-weight: 600;
+  color: var(--text);
+}
+.gtext span {
+  font-size: 12px;
+  color: var(--text-2);
+}
+.btn.sm {
+  height: 28px;
+  padding: 0 11px;
+  font-size: 12.5px;
+}
+
 /* 列表头 */
 .listhead {
   display: flex;

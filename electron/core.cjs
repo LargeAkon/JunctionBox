@@ -14,6 +14,7 @@ const { execFile, spawn } = require("child_process");
 const fs = require("fs");
 const os = require("os");
 const path = require("path");
+const installer = require("./installer.cjs");
 
 // ---------------------------------------------------------------- 进程执行
 /** 运行外部程序，异步返回 stdout / stderr / 退出码 */
@@ -414,12 +415,25 @@ async function javaProbe(p) {
   return out;
 }
 
+/** release 里的 IMPLEMENTOR 写法不统一（"Azul Systems, Inc." / "Azul Zulu"），统一成产品名 */
+function normImpl(s) {
+  const t = String(s || "").toLowerCase();
+  if (!t) return "";
+  if (t.includes("azul")) return "Azul Zulu";
+  if (t.includes("adoptium") || t.includes("temurin")) return "Eclipse Temurin";
+  if (t.includes("amazon") || t.includes("corretto")) return "Amazon Corretto";
+  if (t.includes("microsoft")) return "Microsoft";
+  if (t.includes("bellsoft") || t.includes("liberica")) return "BellSoft Liberica";
+  if (t.includes("oracle")) return "Oracle";
+  return s;
+}
+
 async function jdkInfo(p) {
   let ver = "", impl = "", arch = "";
   try {
     const t = fs.readFileSync(path.join(p, "release"), "utf8");
     let m = t.match(/JAVA_VERSION="([^"]*)"/); if (m) ver = m[1];
-    m = t.match(/IMPLEMENTOR="([^"]*)"/); if (m) impl = m[1];
+    m = t.match(/IMPLEMENTOR="([^"]*)"/); if (m) impl = normImpl(m[1]);
     m = t.match(/OS_ARCH="([^"]*)"/); if (m) arch = m[1];
   } catch (e) { /* ignore */ }
 
@@ -445,6 +459,8 @@ async function findJdks() {
   const add = (p) => {
     if (!p) return;
     p = path.normalize(p);
+    // 正在解压的临时目录不参与列表，否则下载到一半就会冒出一个残缺 JDK
+    if (path.basename(p).startsWith(".tmp_")) return;
     // 如果是联接，换成它指向的真实目录：避免「current」被当成一个独立版本，
     // 也保证重复扫描时不会同时列出链接与目标两份
     const lt = linkTarget(p);
@@ -456,7 +472,7 @@ async function findJdks() {
     cands.push(p);
   };
 
-  const roots = [...JDK_ROOTS, ...loadManual("paths.txt")];
+  const roots = [...JDK_ROOTS, installer.runtimeRoot("jdk"), ...loadManual("paths.txt")];
   for (const root of roots) {
     if (!fs.existsSync(root)) continue;
     add(root);
@@ -843,6 +859,16 @@ async function findNodes() {
   };
 
   for (const r of [...NODE_ROOTS, ...loadManual("node_paths.txt")]) scanParent(r);
+
+  // 版本库自己装的 Node（<runtimes>\node\v22.23.4），子目录直接就是版本
+  const nRoot = installer.runtimeRoot("node");
+  try {
+    for (const n of fs.readdirSync(nRoot)) {
+      if (!n.startsWith(".tmp_")) add(path.join(nRoot, n));
+    }
+  } catch (e) {
+    /* ignore */
+  }
   for (const env of ["NVM_HOME", "NVM_SYMLINK", "VOLTA_HOME"]) {
     const d = process.env[env];
     if (d) scanParent(d);
@@ -945,6 +971,8 @@ async function snapshot() {
     javaHome: e2.ju || "",
     nodes,
     activeNode: an,
+    // 版本库目录：界面据此判断某版本是「自己装的」还是「用户原有的」，只有前者能删
+    runtimeRoots: { jdk: installer.runtimeRoot("jdk"), node: installer.runtimeRoot("node") },
   };
 }
 

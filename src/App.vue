@@ -5,6 +5,7 @@ import PortsView from "./views/PortsView.vue";
 import JdkView from "./views/JdkView.vue";
 import NodeView from "./views/NodeView.vue";
 import AboutView from "./views/AboutView.vue";
+import RuntimeStore from "./components/RuntimeStore.vue";
 
 const navs = [
   { id: "ports", label: "端口检测" },
@@ -125,6 +126,9 @@ function reload() {
         {{ S.toast.text }}
       </div>
     </Transition>
+
+    <!-- ── 版本库（全局单例，由 JDK / Node 页唤起）── -->
+    <RuntimeStore />
   </div>
 </template>
 

@@ -5,8 +5,8 @@
 **One junction. Every runtime.**
 
 A Windows desktop toolbox for developers: scan and kill port-hogging processes,
-and switch between installed **JDK** and **Node.js** versions in milliseconds —
-without touching the registry.
+install any **JDK** or **Node.js** version with one click, and switch between them
+in milliseconds — without touching the registry.
 
 [中文文档](./README.zh-CN.md) · [Download](https://github.com/LargeAkon/JunctionBox/releases) · [Architecture](./docs/ARCHITECTURE.md)
 
@@ -33,6 +33,7 @@ JunctionBox solves both. Version switching is done by re-pointing an **NTFS dire
 | Area | What it does |
 |---|---|
 | **Port inspector** | Scans listening ports, resolves PID → process name → full command line, and kills the process with one click. |
+| **Runtime store** | Ships a curated catalog of JDKs (8/11/17/21/25) and Node.js (20/22/24/26). Pick one, it downloads, unpacks and switches — no browser, no manual unzip, no `JAVA_HOME` editing. |
 | **JDK switcher** | Auto-discovers installed JDKs, shows version and vendor, switches `JAVA_HOME` + `Path` instantly. |
 | **Node switcher** | Auto-discovers Node installations, shows version, arch and bundled npm version, switches instantly. |
 | **PATH editor** | Add or remove PATH entries per runtime, with a directory picker. |
@@ -58,6 +59,12 @@ JunctionBox solves both. Version switching is done by re-pointing an **NTFS dire
     <td align="center"><sub><b>Node switcher</b> — version, architecture and bundled npm</sub></td>
     <td align="center"><sub><b>Environment</b> — resolved JAVA_HOME, active runtimes, live status bar</sub></td>
   </tr>
+  <tr>
+    <td colspan="2"><img src="docs/screenshots/5-store.png" alt="Runtime store" /></td>
+  </tr>
+  <tr>
+    <td colspan="2" align="center"><sub><b>Runtime store</b> — install a JDK or Node version without leaving the app</sub></td>
+  </tr>
 </table>
 
 > The UI is Simplified Chinese in this release. English is on the [roadmap](#roadmap).
@@ -81,7 +88,8 @@ Both are **x64**, **Windows 10/11**. No admin rights required for version switch
 1. Run `JunctionBox-Portable-x64.exe`.
 2. Open the **Ports** page to see who is listening on what.
 3. Open **JDK** or **Node**, pick a version, click switch.
-4. **Open a new terminal** and verify with `java -version` / `node -v`.
+4. Only one version installed? Click **版本库 / Store**, install another one, done.
+5. **Open a new terminal** and verify with `java -version` / `node -v`.
 
 > Terminals that were already open keep the old environment. This is a Windows
 > limitation, not a bug — always verify in a fresh terminal.
@@ -94,6 +102,39 @@ JunctionBox scans common install locations automatically:
 - **Node**: `Program Files\nodejs`, `nvm4w`, `NVM_HOME`, `NVM_SYMLINK`, `VOLTA_HOME`, Volta's image directory, and any `node.exe` found on your `Path`.
 
 Not detected? Use **Add path** in the app to register any custom directory. Custom paths are stored in `%APPDATA%\JavaDevTool\` and merged into every scan.
+
+## Runtime store
+
+Most machines have exactly one JDK and one Node — which means there is nothing to
+switch between. The **Store** button on either version page fills that gap: pick a
+release, and it downloads, unpacks and switches to it in a single step.
+
+| | Versions in the catalog |
+|---|---|
+| JDK | 8, 11, 17, 21, 25 — Azul Zulu, x64 |
+| Node.js | 20, 22, 24, 26 — current LTS lines |
+
+Why the installer stays at ~108 MB instead of ~600 MB:
+
+- The catalog ships **metadata only** — version, size, URL. Binaries are fetched
+  on demand (Node ≈ 35 MB, JDK ≈ 190 MB) and unpacked with the `tar.exe` bundled
+  with Windows 10 1803+, which handles a 190 MB zip in about a second.
+- Every entry has **fallback sources** — Azul CDN → Tsinghua mirror for JDKs,
+  npmmirror → Tsinghua → nodejs.org for Node. The first one that responds wins,
+  so a single blocked host does not break the feature.
+- Everything lands in `%LOCALAPPDATA%\JavaDevTool\runtimes\` — user scope, no
+  admin prompt, nothing written to `Program Files`.
+- Downloads are length-verified, unpacked into a temp folder, and only moved into
+  place after `bin\java.exe` (or `node.exe`) is confirmed to exist. A cancelled or
+  failed download never leaves a half-installed runtime in the list.
+- Already have that major version installed elsewhere? The store shows it as
+  installed and offers to switch, instead of downloading a duplicate 190 MB.
+
+Need the files on another drive? Create `%APPDATA%\JavaDevTool\runtimes.txt` with
+a single absolute path on the first line; `jdk\` and `node\` are created under it.
+
+> Refreshing the catalog: `npm run catalog:update` re-reads the Azul metadata API
+> and the npmmirror index and rewrites `electron/catalog.cjs`.
 
 ## How switching works
 
@@ -126,16 +167,20 @@ Details, including why junctions are used instead of symbolic links and how link
 
 ```
 electron/
-  main.cjs      Window, Mica, IPC registration, startup self-healing, GPU fallback
-  core.cjs      Port scan, version discovery, junction ops, env read/write
-  preload.cjs   contextBridge → window.api
+  main.cjs       Window, Mica, IPC registration, startup self-healing, GPU fallback
+  core.cjs       Port scan, version discovery, junction ops, env read/write
+  catalog.cjs    Built-in JDK / Node catalog (metadata + mirrors), no binaries
+  installer.cjs  Download → verify → unpack → atomic move, cancellable
+  preload.cjs    contextBridge → window.api
 src/
-  App.vue       Custom title bar, navigation, status bar
-  views/        PortsView, JdkView, NodeView, AboutView
-  components/   VersionPanel, ConfirmDialog
-  store.js      Shared reactive state
-  style.css     Fluent 2 tokens and element-level motion
-scripts/dev.mjs Dev launcher
+  App.vue        Custom title bar, navigation, status bar
+  views/         PortsView, JdkView, NodeView, AboutView
+  components/    VersionPanel, RuntimeStore, ConfirmDialog
+  store.js       Shared reactive state
+  style.css      Fluent 2 tokens and element-level motion
+scripts/
+  dev.mjs            Dev launcher
+  update-catalog.cjs Regenerates catalog.cjs from upstream metadata
 ```
 
 ## Build from source
@@ -172,12 +217,32 @@ Click **Allow**. Dismissing the dialog makes Windows write a *permanent block ru
 **Does it conflict with nvm-windows / Volta?**
 They can coexist. JunctionBox detects their install directories. Just don't let two tools manage the same PATH entry at the same time.
 
+**Why not bundle the JDKs and Nodes into the installer?**
+Because that is how you turn a 108 MB tool into a 600 MB download. One JDK is
+190 MB compressed; the catalog covers five. Bundling all nine runtimes would make
+every release a multi-hundred-megabyte upload, and users would still be stuck with
+whatever versions happened to be baked in. Metadata + on-demand download is what
+nvm, fnm and sdkman all do for the same reason.
+
+**Does the runtime store need the internet?**
+Yes — that is the tradeoff above. Everything else (port scanning, switching,
+discovery) works fully offline.
+
+**Where does it put downloaded runtimes?**
+`%LOCALAPPDATA%\JavaDevTool\runtimes\{jdk,node}`. Nothing is installed system-wide
+and no admin prompt appears. Override the location with `%APPDATA%\JavaDevTool\runtimes.txt`.
+
+**Can I delete a downloaded runtime from the app?**
+Yes, with the **删除** button — but only for versions the store installed, and only
+when it is not the active one. Your own JDKs are never touched.
+
 ## Roadmap
 
 - [x] GitHub Actions build + automatic Release publishing on tag push
+- [x] Runtime store with on-demand JDK / Node downloads
 - [ ] Code signing to remove SmartScreen warnings
 - [ ] English UI (currently Simplified Chinese)
-- [ ] Per-project version pinning
+- [ ] Per-project version pinning (`.java-version` / `.nvmrc`)
 - [ ] Export / import environment profiles
 
 ## Contributing

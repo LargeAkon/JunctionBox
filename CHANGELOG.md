@@ -5,6 +5,45 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [4.0.0] - 2026-10-29
+
+Runtime store — JunctionBox can now install runtimes, not only switch between them.
+This is the first major release: the tool stops assuming you already have two
+versions of everything.
+
+### Added
+
+- **Runtime store.** A curated catalog of five JDKs (8, 11, 17, 21, 25) and four
+  Node.js LTS lines (20, 22, 24, 26), reachable from the **版本库 / Store** button
+  on either version page. Pick one → download → unpack → switch, in one action.
+- **Mirror fallback per entry.** JDK: Azul CDN → Tsinghua Adoptium mirror.
+  Node: npmmirror → Tsinghua → nodejs.org. The first source that responds wins.
+- **Cancellable streaming downloads** with live percentage, transferred bytes and
+  throughput, surfaced through a new `install:progress` IPC channel.
+- **Install-location override.** `%APPDATA%\JavaDevTool\runtimes.txt` takes an
+  absolute path on its first line; runtimes then live under it instead of
+  `%LOCALAPPDATA%`.
+- **Guided empty state.** When only 0–1 versions are detected, both version pages
+  show an inline banner pointing at the store — the exact case this release exists
+  for.
+- `npm run catalog:update` — regenerates `electron/catalog.cjs` from the Azul
+  metadata API and the npmmirror index.
+
+### Changed
+
+- Runtime discovery now also scans
+  `%LOCALAPPDATA%\JavaDevTool\runtimes\{jdk,node}`, so store-installed versions
+  appear in the normal list and behave like any other install.
+- Vendor names from the JDK `release` file are normalised (`Azul Systems, Inc.` →
+  `Azul Zulu`), so the list reads consistently regardless of the distribution.
+- Deleting a runtime is restricted to directories inside the runtime root, refuses
+  junctions, and refuses the version currently in use.
+
+### Notes
+
+- The installer is still ~108 MB: the catalog ships metadata only. Bundling the
+  nine runtimes would push every release past 600 MB.
+
 ## [3.0.7] - 2026-10-29
 
 Identifier cleanup — no functional change. The binaries are otherwise identical to 3.0.6.

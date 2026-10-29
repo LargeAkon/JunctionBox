@@ -44,6 +44,11 @@
 | `jdk:switch` | `core.switchJdk(path)` | 切换 JDK |
 | `node:switch` | `core.switchNode(path)` | 切换 Node |
 | `path:add` / `path:remove` | 内联 | 维护手动登记的扫描目录 |
+| `store:list` | `catalog.list()` + `findJdks/ findNodes` | 版本清单与已装状态 |
+| `store:install` | `installer.install()` | 下载并安装运行时（单飞） |
+| `store:cancel` | `installer.cancel(id)` | 取消进行中的下载 |
+| `store:remove` | `installer.uninstall()` | 删除版本库内的运行时 |
+| `install:progress` | 主进程 → 渲染进程 | 下载/解压进度推送 |
 | `dialog:dir` | 内联 | 目录选择对话框 |
 | `shell:open` | 内联 | 打开外部链接 |
 
@@ -174,7 +179,80 @@ Get-CimInstance Win32_Process   ← 一次拿全量进程，建 PID → 命令�
 GPU 崩溃在某些显卡驱动上会导致进程直接退出，因此用启动计数实现自动降级，
 而不是要求用户手动加参数。
 
-## 8. 已知限制
+## 8. 版本库：下载安装运行时
+
+内核只有一个约束：**切换**只处理已经存在的目录，装了才有得切。
+版本库补的是「装」这一环。
+
+### 8.1 为什么清单里没有二进制
+
+一个 JDK 压缩后 190MB、解压后 330MB；Node 约 35MB。清单覆盖 5 个 JDK + 4 个 Node，
+全塞进 exe 会让安装包从 108MB 涨到 600MB 以上，而且用户只能拿到发版时打包的那几个版本。
+
+因此 `electron/catalog.cjs` 只存**元数据**：
+
+```js
+{ id, kind, feature, label, ver, vendor, tag, sizeMb,
+  sources: [ 主源URL, 备用源URL ] }
+```
+
+nvm、fnm、sdkman 用的都是这个模型。
+
+### 8.2 镜像与回退
+
+| 运行时 | 源顺序 | 实测 |
+|---|---|---|
+| JDK | Azul CDN → 清华 Adoptium 镜像 | 5.2 MB/s |
+| Node | npmmirror → 清华 nodejs-release → nodejs.org | 9.5 MB/s |
+
+`sources` 按顺序尝试，前一个失败（HTTP 非 200、连接超时、字节数不符）才换下一个。
+国内环境下 Azul CDN 与 npmmirror 都不走 GitHub，避免了最常见的下载卡死。
+
+### 8.3 下载
+
+`https.get` + 手动跟随 302（`downloadOne`）。手动而不是用第三方库，是因为要三件事：
+
+- **可取消**：`ctx.req.destroy()` 立刻断开，临时文件在 `finally` 里清掉。
+- **可计量**：`content-length` 与实际累计字节对比，短包直接判失败，不会把半截 zip 交给解压器。
+- **不让代理乱改**：显式 `Accept-Encoding: identity`，否则某些 CDN 会 gzip 一遍，
+  `content-length` 与实际写入量对不上，进度条会跳。
+
+进度按 140ms 节流，通过 `install:progress` 推给渲染进程。
+
+### 8.4 解压
+
+用系统自带的 `C:\Windows\System32\tar.exe`（bsdtar 3.5+ 原生支持 zip）：
+
+```js
+spawn(tar, ["-xf", zip, "-C", dest])
+```
+
+实测 190MB 的 JDK 包 **1 秒**解完。`PowerShell Expand-Archive` 同类包要 20~40 秒，
+且对非 ASCII 路径有历史问题，只作为 `tar.exe` 缺失时的兜底。
+
+### 8.5 原子落位
+
+```
+下载 → .tmp_<id>_<时间戳>/ → 结构校验 → rename 到最终目录
+```
+
+- 最终目录名由**包内数据**决定，不用清单里的版本号：
+  JDK 读 `release` 里的 `JAVA_VERSION` + `IMPLEMENTOR`（→ `zulu-21.0.13`），
+  Node 取目录名（→ `v22.23.4`）。备用源的小版本可能与主源不同，这样才不会对不上。
+- 只有确认 `bin\java.exe` / `node.exe` 存在后才 rename，所以取消或失败不会在列表中留下半个运行时。
+- 删除时用 `path.relative` 校验目标必须落在 `runtimes` 根内、`lstat` 必须不是联接、
+  且不能是当前联接指向的目录。
+
+### 8.6 与扫描逻辑的衔接
+
+`installer.runtimeRoot()` 返回 `%LOCALAPPDATA%\JavaDevTool\runtimes\{jdk,node}`，
+`findJdks()` / `findNodes()` 把它加进扫描根。因此版本库装的版本和用户自己装的版本
+在列表里没有区别，都能被 junction 切换。
+
+界面上用路径前缀区分来源：只有以 runtimeRoot 开头的才显示「删除」。
+「已安装」按**大版本**匹配，用户已有 Temurin 17.0.20 时，清单里的 JDK 17 直接显示为已安装。
+
+## 9. 已知限制
 
 **① 已打开的终端不会更新。** 进程环境在启动时继承，Windows 没有全局刷新机制。
 切换后必须新开终端验证。
@@ -189,7 +267,7 @@ GPU 崩溃在某些显卡驱动上会导致进程直接退出，因此用启动�
 
 **④ 未代码签名。** SmartScreen 会提示，杀毒软件可能误报。
 
-## 9. 界面
+## 10. 界面
 
 - 标题栏自绘，`-webkit-app-region: drag` 实现拖拽，窗口控制按钮单独处理。
 - `show: false` + `ready-to-show`，避免白屏闪烁。

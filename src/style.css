@@ -210,6 +210,17 @@ html.dark .btn.primary {
   color: #08121f;
 }
 
+/* 次级强调：用于「版本库」这类主入口，比普通按钮重、比主按钮轻 */
+.btn.primary-soft {
+  color: var(--accent);
+  background: var(--accent-soft);
+  border-color: var(--accent-stroke);
+}
+.btn.primary-soft:hover {
+  background: color-mix(in srgb, var(--accent) 15%, transparent);
+  border-color: var(--accent-stroke);
+}
+
 .btn.ghost {
   background: transparent;
   border-color: transparent;
