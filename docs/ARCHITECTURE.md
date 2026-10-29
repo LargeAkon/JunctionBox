@@ -3,6 +3,16 @@
 本文面向想读懂或修改代码的开发者，解释 JunctionBox 的关键设计决策，
 以及 Windows 平台上一系列不太直观的坑。
 
+**文档导航**
+
+| 文档 | 面向谁 | 讲什么 |
+|---|---|---|
+| [README](../README.md) | 普通用户 | 这是什么、怎么下载、怎么用 |
+| **ARCHITECTURE.md**（本文） | 开发者 | 进程模型、IPC、junction 原理、切换与环境变量的实现 |
+| [RUNTIME-STORE.md](./RUNTIME-STORE.md) | 用户 + 开发者 | 版本库机制：清单、镜像、安装位置、台账与删除保护 |
+| [TROUBLESHOOTING.md](./TROUBLESHOOTING.md) | 用户 | 按现象排查：终端旧版本、防火墙、联接损坏、白屏 |
+| [CHANGELOG.md](../CHANGELOG.md) | 所有人 | 每个版本改了什么（GitHub Release 说明的来源） |
+
 ---
 
 ## 1. 进程模型

@@ -1,274 +1,199 @@
 <div align="center">
 
-# JunctionBox
+# JunctionBox · 接线盒
 
-**One junction. Every runtime.**
+**一次配置，毫秒切换。**
 
-A Windows desktop toolbox for developers: scan and kill port-hogging processes,
-install any **JDK** or **Node.js** version with one click, and switch between them
-in milliseconds — without touching the registry.
+端口占用排查，JDK / Node.js 版本的安装与切换，都在这一个窗口里完成。
+切换走 NTFS 目录联接，约 **15 毫秒**——**不写注册表，不用重开终端，不需要管理员权限。**
 
-[中文文档](./README.zh-CN.md) · [Download](https://github.com/LargeAkon/JunctionBox/releases) · [Architecture](./docs/ARCHITECTURE.md)
+[English](./README.en.md) · [下载](https://github.com/LargeAkon/JunctionBox/releases/latest) · [更新日志](./CHANGELOG.md) · [架构原理](./docs/ARCHITECTURE.md)
 
-![Platform](https://img.shields.io/badge/platform-Windows%2010%2F11%20x64-0078D4?logo=windows&logoColor=white)
-![Tech](https://img.shields.io/badge/Electron-Vue%203-646cff?logo=electron)
-![License](https://img.shields.io/badge/license-MIT-green)
-[![Build](https://github.com/LargeAkon/JunctionBox/actions/workflows/release.yml/badge.svg)](https://github.com/LargeAkon/JunctionBox/actions/workflows/release.yml)
+![平台](https://img.shields.io/badge/platform-Windows%2010%2F11%20x64-0078D4?logo=windows&logoColor=white)
+![技术栈](https://img.shields.io/badge/Electron-Vue%203-646cff?logo=electron)
+![协议](https://img.shields.io/badge/license-MIT-green)
+[![构建](https://github.com/LargeAkon/JunctionBox/actions/workflows/release.yml/badge.svg)](https://github.com/LargeAkon/JunctionBox/actions/workflows/release.yml)
 
 </div>
 
----
+![端口检测](docs/screenshots/1-ports.png)
 
-## Why
+## 它解决什么
 
-Two problems kept wasting my time on Windows:
+在 Windows 上写代码，这三件事反复浪费时间：
 
-1. **`npm run dev` fails with `EADDRINUSE`** — and `netstat -ano | findstr` gives you a PID, not an answer.
-2. **Switching JDK or Node versions** means editing `JAVA_HOME`, reordering `Path`, reopening every terminal, and still getting the wrong version because some IDE cached the old one.
+| 痛点 | 以前 | 现在 |
+|---|---|---|
+| **端口被占用** | `netstat -ano \| findstr :8080` 拿到 PID，再去任务管理器翻进程名 | 一行列出端口、PID、进程名与完整命令行，选中即结束 |
+| **切 JDK / Node 版本** | 改 `JAVA_HOME`、调 `Path` 顺序、重开所有终端，IDE 里还是旧版本 | 双击即切，约 15 ms，环境变量一次配好不再动 |
+| **机器上只有一个版本** | 得自己去官网下载、解压、配环境变量 | 版本库内置 5 个 JDK 与 4 条 Node LTS 线，选中即装即用 |
 
-JunctionBox solves both. Version switching is done by re-pointing an **NTFS directory junction**, so it costs **~15 ms**, writes **nothing to the registry**, and needs **no environment broadcast**.
+## 下载
 
-## Features
+到 [**Releases**](https://github.com/LargeAkon/JunctionBox/releases/latest) 下载，两个文件二选一：
 
-| Area | What it does |
+| 文件 | 适合谁 |
 |---|---|
-| **Port inspector** | Scans listening ports, resolves PID → process name → full command line, and kills the process with one click. |
-| **Runtime store** | Ships a curated catalog of JDKs (8/11/17/21/25) and Node.js (20/22/24/26). Pick one, it downloads, unpacks and switches — no browser, no manual unzip, no `JAVA_HOME` editing. |
-| **JDK switcher** | Auto-discovers installed JDKs, shows version and vendor, switches `JAVA_HOME` + `Path` instantly. |
-| **Node switcher** | Auto-discovers Node installations, shows version, arch and bundled npm version, switches instantly. |
-| **PATH editor** | Add or remove PATH entries per runtime, with a directory picker. |
-| **Self-healing** | Detects broken links and stale PATH entries on startup and repairs them automatically. |
-| **Native look** | Mica backdrop, Fluent 2 motion, custom title bar, dark theme. |
+| **`JunctionBox-Portable-x64.exe`** | 想双击就用。单文件，不写系统目录，删掉文件即卸载 |
+| **`JunctionBox-Setup-x64.exe`** | 想要开始菜单项、桌面快捷方式、自选安装路径 |
 
-## Screenshots
+Windows 10 / 11，x64，约 108 MB。**回退旧版本**：装回旧安装包即可，已配置的联接与扫描路径不受影响。
+
+> 首次运行可能出现 SmartScreen 蓝色提示，因为程序没有购买代码签名证书。
+> 点「更多信息 → 仍要运行」即可，或者[从源码构建](#从源码构建)。
+
+## 快速上手
+
+1. 运行 `JunctionBox-Portable-x64.exe`。
+2. **端口**页查看当前谁在监听哪些端口，双击行可结束进程。
+3. **JDK** 或 **Node** 页选中版本，双击切换。
+4. 只有一个版本、没得切？点右上角 **版本库**，选一个装，装完自动切过去。
+5. **新开一个终端**，执行 `java -version` / `node -v` 验证。
+
+> **必须新开终端。** 已经打开的终端、IDE 内置终端继承的是启动时的环境变量，
+> 这是 Windows 的机制，不是工具的问题。
+
+## 功能
+
+| 模块 | 能力 |
+|---|---|
+| **端口检测** | 扫描监听端口，把 PID 解析成进程名与完整命令行，一键结束 |
+| **JDK 切换** | 自动发现已安装 JDK，显示版本与厂商，双击切换 `JAVA_HOME` 与 `Path` |
+| **Node 切换** | 自动发现 Node 安装，显示版本、架构、内置 npm 版本 |
+| **版本库** | 内置清单按需下载，装完自动切换；也可写 `runtimes.txt` 指定位置 |
+| **PATH 编辑** | 为每种运行时添加 / 删除 PATH 目录，带目录选择器 |
+| **启动自愈** | 联接失效、PATH 残留失效项时，启动即自动修复 |
+| **界面** | Mica 材质、Fluent 2 动效、自绘标题栏、深色主题 |
+
+版本发现范围、自定义路径登记方式见 [版本是怎么被发现的](#版本是怎么被发现的)。
+
+## 界面
 
 <table>
   <tr>
-    <td width="50%"><img src="docs/screenshots/1-ports.png" alt="Port inspector" /></td>
-    <td width="50%"><img src="docs/screenshots/2-jdk.png" alt="JDK version switcher" /></td>
+    <td width="50%"><img src="docs/screenshots/2-jdk.png" alt="JDK 切换" /></td>
+    <td width="50%"><img src="docs/screenshots/3-node.png" alt="Node 切换" /></td>
   </tr>
   <tr>
-    <td align="center"><sub><b>Port inspector</b> — every listener with PID, process and full command line</sub></td>
-    <td align="center"><sub><b>JDK switcher</b> — one click, current version marked</sub></td>
+    <td align="center"><sub><b>JDK 切换</b> — 双击即切，当前版本高亮</sub></td>
+    <td align="center"><sub><b>Node 切换</b> — 版本、架构与内置 npm 版本</sub></td>
   </tr>
   <tr>
-    <td width="50%"><img src="docs/screenshots/3-node.png" alt="Node version switcher" /></td>
-    <td width="50%"><img src="docs/screenshots/4-about.png" alt="About and environment" /></td>
+    <td width="50%"><img src="docs/screenshots/5-store.png" alt="版本库" /></td>
+    <td width="50%"><img src="docs/screenshots/6-location.png" alt="安装位置" /></td>
   </tr>
   <tr>
-    <td align="center"><sub><b>Node switcher</b> — version, architecture and bundled npm</sub></td>
-    <td align="center"><sub><b>Environment</b> — resolved JAVA_HOME, active runtimes, live status bar</sub></td>
+    <td align="center"><sub><b>版本库</b> — 不用离开程序就能装一个新版本</sub></td>
+    <td align="center"><sub><b>安装位置</b> — 装之前先问一句，默认建议放在你现有版本的旁边</sub></td>
   </tr>
   <tr>
-    <td colspan="2"><img src="docs/screenshots/5-store.png" alt="Runtime store" /></td>
+    <td width="50%"><img src="docs/screenshots/4-about.png" alt="环境概览" /></td>
+    <td width="50%"><img src="docs/screenshots/1-ports.png" alt="端口检测" /></td>
   </tr>
   <tr>
-    <td colspan="2" align="center"><sub><b>Runtime store</b> — install a JDK or Node version without leaving the app</sub></td>
-  </tr>
-  <tr>
-    <td colspan="2"><img src="docs/screenshots/6-location.png" alt="Install location" /></td>
-  </tr>
-  <tr>
-    <td colspan="2" align="center"><sub><b>Install location</b> — asked before every download, defaulting to the folder your other versions live in</sub></td>
+    <td align="center"><sub><b>环境概览</b> — JAVA_HOME 解析结果与当前运行时</sub></td>
+    <td align="center"><sub><b>端口检测</b> — 谁占着端口，命令行一目了然</sub></td>
   </tr>
 </table>
 
-> The UI is Simplified Chinese in this release. English is on the [roadmap](#roadmap).
+## 为什么只要 15 毫秒
 
-## Download
+```
+传统做法  Path = C:\...\jdk-17\bin ; C:\...\node-v20 ; ...
+          切换 = 改注册表 + 广播 WM_SETTINGCHANGE + 等系统响应（秒级）
 
-Get the latest build from [**Releases**](https://github.com/LargeAkon/JunctionBox/releases).
+JunctionBox
+          JAVA_HOME   = %LOCALAPPDATA%\JavaDevTool\links\jdk   ← 目录联接
+          Path 首项   = %LOCALAPPDATA%\JavaDevTool\links\node  ← 目录联接
+          切换 = 把联接指向另一个目录。纯文件系统操作。
+```
 
-| File | Type | Choose this if… |
+| 对比项 | 改注册表 / 改 Path | JunctionBox |
 |---|---|---|
-| `JunctionBox-Portable-x64.exe` | Portable, single file | You want to double-click and run. No installation, no leftovers. |
-| `JunctionBox-Setup-x64.exe` | NSIS installer | You want a Start Menu entry, a desktop shortcut, and a custom install directory. |
+| 切换耗时 | 秒级 + 广播等待 | **约 15 毫秒** |
+| 注册表写入 | 每次切换都写 | 仅首次配置写一次 |
+| 管理员权限 | 经常需要 | **不需要** |
+| 跨盘符 | — | 支持（junction 而非符号链接） |
 
-Both are **x64**, **Windows 10/11**. No admin rights required for version switching.
+为什么用 junction 而不是符号链接、删除联接时如何避免误删真实目录，
+详见 [**docs/ARCHITECTURE.md**](./docs/ARCHITECTURE.md)。
 
-> SmartScreen may warn on first launch because the binaries are not code-signed.
-> Click **More info → Run anyway**. Building from source is always an option — see below.
+## 使用版本库
 
-## Quick start
+大多数机器上只装了一个 JDK 和一个 Node——那就没什么可切的了。**版本库**补的就是这一环。
 
-1. Run `JunctionBox-Portable-x64.exe`.
-2. Open the **Ports** page to see who is listening on what.
-3. Open **JDK** or **Node**, pick a version, click switch.
-4. Only one version installed? Click **版本库 / Store**, install another one, done.
-5. **Open a new terminal** and verify with `java -version` / `node -v`.
+- **内置什么**：JDK 8 / 11 / 17 / 21 / 25（Azul Zulu），Node 20 / 22 / 24 / 26（LTS 线）。
+- **为什么安装包还是 108 MB**：清单里只有元数据，二进制按需下载。九个运行时全内置会让每个版本超过 600 MB。
+- **装在哪里由你决定**：点「安装」先扫描本机已有版本，建议装到它们旁边（同级目录），也可以自己选，不会默默塞进 C 盘。
+- **多镜像回退**：JDK 走 Azul CDN → 清华镜像，Node 走 npmmirror → 清华 → 官方源，单站被墙不影响使用。
+- **删除只对自己装的版本生效**：安装位置可以指向你自己的 JDK 目录，那里的版本不会被本程序删除。
 
-> Terminals that were already open keep the old environment. This is a Windows
-> limitation, not a bug — always verify in a fresh terminal.
+完整机制（镜像地址、台账、目录结构、删除保护）见 [**docs/RUNTIME-STORE.md**](./docs/RUNTIME-STORE.md)。
 
-### How versions are discovered
+## 版本是怎么被发现的
 
-JunctionBox scans common install locations automatically:
+工具会自动扫描常见安装位置：
 
-- **JDK**: `Program Files\Java`, Eclipse Adoptium, Corretto, Zulu, Microsoft, BellSoft, Semeru, JetBrains Runtime, `~\.jdks`, and any `<root>\bin\java.exe` found on your `Path`.
-- **Node**: `Program Files\nodejs`, `nvm4w`, `NVM_HOME`, `NVM_SYMLINK`, `VOLTA_HOME`, Volta's image directory, and any `node.exe` found on your `Path`.
+- **JDK**：`Program Files\Java`、Adoptium、Corretto、Zulu、Microsoft、BellSoft、Semeru、
+  JetBrains Runtime、IDEA 的 `~\.jdks`，以及 `Path` 里所有含 `bin\java.exe` 的目录。
+- **Node**：`Program Files\nodejs`、`nvm4w`、`NVM_HOME`、`NVM_SYMLINK`、`VOLTA_HOME`、
+  Volta 镜像目录，以及 `Path` 里所有含 `node.exe` 的目录。
 
-Not detected? Use **Add path** in the app to register any custom directory. Custom paths are stored in `%APPDATA%\JavaDevTool\` and merged into every scan.
+**没扫到？** 在界面里点「添加路径」登记任意目录，配置存在 `%APPDATA%\JavaDevTool\`，
+每次扫描都会合并进来。
 
-## Runtime store
+## 常见问题
 
-Most machines have exactly one JDK and one Node — which means there is nothing to
-switch between. The **Store** button on either version page fills that gap: pick a
-release, and it downloads, unpacks and switches to it in a single step.
+**会改注册表吗？**
+只在首次配置时写一次，把 `JAVA_HOME` 与 `Path` 首项指向联接口录。之后切换版本完全不碰注册表。
 
-| | Versions in the catalog |
-|---|---|
-| JDK | 8, 11, 17, 21, 25 — Azul Zulu, x64 |
-| Node.js | 20, 22, 24, 26 — current LTS lines |
+**终端里还是旧版本？**
+进程在启动时继承环境变量。关掉重开终端，包括 IDE 内置终端。
 
-Why the installer stays at ~108 MB instead of ~600 MB:
+**和 nvm-windows / Volta 冲突吗？**
+可以共存，工具会识别它们的安装目录。只是不要让两个工具同时管理同一个 PATH 条目。
 
-- The catalog ships **metadata only** — version, size, URL. Binaries are fetched
-  on demand (Node ≈ 35 MB, JDK ≈ 190 MB) and unpacked with the `tar.exe` bundled
-  with Windows 10 1803+, which handles a 190 MB zip in about a second.
-- Every entry has **fallback sources** — Azul CDN → Tsinghua mirror for JDKs,
-  npmmirror → Tsinghua → nodejs.org for Node. The first one that responds wins,
-  so a single blocked host does not break the feature.
-- The install location is **asked every time**. Clicking *Install* opens a picker that
-  first scans your machine for existing runtimes — if JDK 17 lives in `E:\develop\Java\jdk`,
-  it offers to put JDK 25 in `E:\develop\Java` next to it (one click). Decline, and you
-  choose the folder yourself. Nothing is silently dropped into `C:`.
-- With no existing runtime detected, the path field starts empty and the dialog says
-  outright that the default lives on `C:` — pick a folder you actually use.
-- Tick *always install here* to remember the location (stored separately for JDK and
-  Node); change or reset it any time from the store footer.
-- Downloads are length-verified, unpacked into a temp folder, and only moved into
-  place after `bin\java.exe` (or `node.exe`) is confirmed to exist. A cancelled or
-  failed download never leaves a half-installed runtime in the list.
-- Already have that major version installed elsewhere? The store shows it as
-  installed and offers to switch, instead of downloading a duplicate 190 MB.
-- **Delete only applies to runtimes JunctionBox installed.** The install location may
-  point at your own JDK folder; versions there are never touched by the uninstaller.
+**下载的 JDK / Node 装在哪？**
+装在你选的地方。默认建议和你已有的版本放在同一目录，选择记在 `%APPDATA%\JavaDevTool\roots.json`；
+没设置过时用 `%LOCALAPPDATA%\JavaDevTool\runtimes\`。不写系统目录、不弹 UAC。
 
-Locations are stored in `%APPDATA%\JavaDevTool\roots.json` (one entry per kind) and the
-install ledger in `installed.json`. With nothing configured the default is
-`%LOCALAPPDATA%\JavaDevTool\runtimes\`. The older `runtimes.txt` override still works.
+**杀毒软件报毒？**
+未签名的 Electron 程序容易被启发式引擎误报。源码在此，可自行审计后构建。
 
-> Refreshing the catalog: `npm run catalog:update` re-reads the Azul metadata API
-> and the npmmirror index and rewrites `electron/catalog.cjs`.
+更多问题（防火墙弹窗点错怎么办、GPU 崩溃、联接损坏修复）见
+[**docs/TROUBLESHOOTING.md**](./docs/TROUBLESHOOTING.md)。
 
-## How switching works
+## 从源码构建
 
-```
-Before:  Path = C:\...\jdk-17\bin ; C:\...\node-v20 ; ...
-         → switching means rewriting the registry and broadcasting WM_SETTINGCHANGE
-
-After:   JAVA_HOME        = %LOCALAPPDATA%\JavaDevTool\links\jdk   (junction)
-         Path (first)     = %LOCALAPPDATA%\JavaDevTool\links\node  (junction)
-         → switching = delete the junction, create it again pointing at another folder
-```
-
-| | Registry editing | JunctionBox |
-|---|---|---|
-| Switch cost | Seconds + broadcast | **~15 ms** |
-| Registry writes | Every switch | Only the first-time setup |
-| Needs admin | Often | **No** |
-| Cross-drive | — | Works (junctions, not symlinks) |
-
-Details, including why junctions are used instead of symbolic links and how links are deleted safely, are in [**docs/ARCHITECTURE.md**](./docs/ARCHITECTURE.md).
-
-## Tech stack
-
-- **Electron** — shell, Mica backdrop, IPC, guarded single-flight switching
-- **Vue 3** + **Vite** — renderer UI
-- **Node.js (main process)** — `netstat`, `Get-CimInstance`, .NET Registry API, `fs` junction operations
-- **electron-builder** — NSIS + portable packaging
-
-## Project structure
-
-```
-electron/
-  main.cjs       Window, Mica, IPC registration, startup self-healing, GPU fallback
-  core.cjs       Port scan, version discovery, junction ops, env read/write
-  catalog.cjs    Built-in JDK / Node catalog (metadata + mirrors), no binaries
-  installer.cjs  Download → verify → unpack → atomic move, cancellable
-  preload.cjs    contextBridge → window.api
-src/
-  App.vue        Custom title bar, navigation, status bar
-  views/         PortsView, JdkView, NodeView, AboutView
-  components/    VersionPanel, RuntimeStore, ConfirmDialog
-  store.js       Shared reactive state
-  style.css      Fluent 2 tokens and element-level motion
-scripts/
-  dev.mjs            Dev launcher
-  update-catalog.cjs Regenerates catalog.cjs from upstream metadata
-```
-
-## Build from source
-
-Requires **Node.js 20+** and **Windows**.
+需要 **Node.js 20+** 与 **Windows**。
 
 ```bash
 git clone https://github.com/LargeAkon/JunctionBox.git
 cd JunctionBox
 npm install
 
-npm run dev        # develop with hot reload
-npm run dist       # build NSIS installer + portable exe
+npm run dev      # 开发模式，热更新
+npm run dist     # 打包 NSIS 安装包 + 便携版
 ```
 
-Artifacts are written to `release/`:
+产物在 `release/`：`JunctionBox-Setup-x64.exe` 与 `JunctionBox-Portable-x64.exe`。
+`npm run dist:dir` 只打包目录、不生成安装包，适合快速验证。
 
-- `JunctionBox-Setup-x64.exe` — NSIS installer
-- `JunctionBox-Portable-x64.exe` — portable single file
+## 路线图
 
-`npm run dist:dir` skips packaging and only produces `release/win-unpacked/` for quick testing.
+- [x] GitHub Actions 自动构建与发布（推送 `v*` 标签触发）
+- [x] 内置版本库，JDK / Node 按需下载安装
+- [ ] 代码签名，消除 SmartScreen 提示
+- [ ] 英文界面（当前为简体中文）
+- [ ] 按项目固定版本（`.java-version` / `.nvmrc`）
+- [ ] 环境配置导出 / 导入
 
-## FAQ
+## 参与贡献
 
-**Does it modify the registry?**
-Only once, to point `JAVA_HOME` and the first `Path` entry at the junction folder. After that, switching versions never touches it.
+欢迎 Issue 和 PR，详见 [CONTRIBUTING.md](./CONTRIBUTING.md)。
 
-**Why does my terminal still show the old version?**
-Processes inherit their environment at launch. Close and reopen the terminal — including the one embedded in your IDE.
+如果这个工具帮你省下了几次 `EADDRINUSE` 的排查时间，点个 ⭐ 让更多人看到。
 
-**A firewall popup appeared. What should I click?**
-Click **Allow**. Dismissing the dialog makes Windows write a *permanent block rule* for that executable, and the firewall UI will then grey out the allow button. If that already happened, remove the rule with `Remove-NetFirewallRule`.
-
-**Does it conflict with nvm-windows / Volta?**
-They can coexist. JunctionBox detects their install directories. Just don't let two tools manage the same PATH entry at the same time.
-
-**Why not bundle the JDKs and Nodes into the installer?**
-Because that is how you turn a 108 MB tool into a 600 MB download. One JDK is
-190 MB compressed; the catalog covers five. Bundling all nine runtimes would make
-every release a multi-hundred-megabyte upload, and users would still be stuck with
-whatever versions happened to be baked in. Metadata + on-demand download is what
-nvm, fnm and sdkman all do for the same reason.
-
-**Does the runtime store need the internet?**
-Yes — that is the tradeoff above. Everything else (port scanning, switching,
-discovery) works fully offline.
-
-**Where does it put downloaded runtimes?**
-Wherever you say. The install dialog proposes the folder your existing runtimes already
-live in (`E:\develop\Java`, say) and lets you pick another one. The choice is remembered
-in `%APPDATA%\JavaDevTool\roots.json`; with nothing configured it falls back to
-`%LOCALAPPDATA%\JavaDevTool\runtimes\{jdk,node}`. Nothing is installed system-wide and no
-admin prompt appears.
-
-**Can I delete a downloaded runtime from the app?**
-Yes, with the **删除** button — but only for versions the store installed, and only
-when it is not the active one. Your own JDKs are never touched.
-
-## Roadmap
-
-- [x] GitHub Actions build + automatic Release publishing on tag push
-- [x] Runtime store with on-demand JDK / Node downloads
-- [ ] Code signing to remove SmartScreen warnings
-- [ ] English UI (currently Simplified Chinese)
-- [ ] Per-project version pinning (`.java-version` / `.nvmrc`)
-- [ ] Export / import environment profiles
-
-## Contributing
-
-Issues and PRs are welcome. See [CONTRIBUTING.md](./CONTRIBUTING.md).
-
-If this saved you a few `EADDRINUSE` headaches, a ⭐ helps others find it.
-
-## License
+## 许可证
 
 [MIT](./LICENSE) © 2026 LargeAkon

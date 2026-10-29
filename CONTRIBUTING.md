@@ -55,12 +55,35 @@ docs: explain firewall behaviour with junctions
 refactor: merge env snapshot into a single PowerShell call
 ```
 
+## Changelog and releases
+
+`CHANGELOG.md` is the **single source of truth** for user-facing notes — the GitHub
+release body is generated from it by `scripts/release-notes.cjs`, so whatever you
+write there is what users read on the Releases page.
+
+Format (see the top of `CHANGELOG.md`):
+
+```markdown
+## [4.2.0] - 2026-11-02 · one-line theme
+### 新增 / ### 调整 / ### 修复 / ### 注意
+```
+
+Do not put download tables or compare links in the file; the release pipeline appends them.
+
+Releasing is a tag push, nothing else:
+
+```bash
+npm run notes 4.2.0     # preview the release body locally
+git tag -a v4.2.0 -m "JunctionBox 4.2.0"
+git push origin v4.2.0  # CI builds both binaries and publishes the release
+```
+
 ## Pull requests
 
 - One logical change per PR.
 - Describe **what you tested on Windows**, not just what you changed.
 - If you touch version switching, say which JDK/Node versions you switched between.
-- Update `CHANGELOG.md` under an `Unreleased` heading for user-visible changes.
+- Add a `CHANGELOG.md` entry for anything user-visible.
 
 ## Reporting bugs
 

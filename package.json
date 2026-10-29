@@ -32,7 +32,8 @@
     "build": "vite build",
     "catalog:update": "node scripts/update-catalog.cjs",
     "dist": "vite build && electron-builder --win --x64 --publish never",
-    "dist:dir": "vite build && electron-builder --win --x64 --publish never --dir"
+    "dist:dir": "vite build && electron-builder --win --x64 --publish never --dir",
+    "notes": "node scripts/release-notes.cjs"
   },
   "dependencies": {
     "vue": "^3.5.29"

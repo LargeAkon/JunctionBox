@@ -41,13 +41,20 @@ jobs:
             "$h  $($_.Name)" | Out-File -FilePath "release/SHA256SUMS.txt" -Append -Encoding ascii
           }
 
+      - name: Extract release notes
+        if: startsWith(github.ref, 'refs/tags/v')
+        shell: bash
+        run: node scripts/release-notes.cjs "${GITHUB_REF_NAME}" --out release-notes.md
+
       - name: Publish release
         if: startsWith(github.ref, 'refs/tags/v')
         uses: softprops/action-gh-release@v2
         with:
+          # 标题永远是 vX.Y.Z，说明来自 CHANGELOG.md 对应段落
+          name: ${{ github.ref_name }}
+          body_path: release-notes.md
           files: |
             release/*.exe
             release/SHA256SUMS.txt
-          generate_release_notes: true
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

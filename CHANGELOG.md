@@ -1,145 +1,135 @@
-# Changelog
+# 更新日志
 
-All notable changes to this project will be documented in this file.
+本文件记录 JunctionBox 每个公开版本的变化。格式遵循
+[Keep a Changelog](https://keepachangelog.com/zh-CN/1.1.0/)，版本号遵循
+[语义化版本](https://semver.org/lang/zh-CN/)。
 
-The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
-and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
+发布说明（GitHub Releases）由本文件对应的版本段落自动生成，因此**这里写什么，
+Release 页就显示什么**。写新版本时只需遵守三个约定：
 
-## [4.1.1] - 2026-10-29
+1. 段落标题固定为 `## [版本号] - 日期 · 一句话主题`；
+2. 正文只使用 `### 新增` / `### 调整` / `### 修复` / `### 注意` 四个小标题；
+3. 不要在这里写下载方式、校验值、对比链接，这些由发布流程自动补。
 
-Deleting a runtime no longer happens on a single click.
+---
 
-### Added
+## [4.1.1] - 2026-10-29 · 删除版本前先确认
 
-- **Confirmation before a runtime is deleted.** The dialog names the exact version and
-  folder (`21.0.13 · zulu-21.0.13`) and says outright that the files are removed for
-  good — no Recycle Bin, no undo — and that the version can be downloaded again from
-  the store. Previously one click on *删除* erased a 300 MB JDK instantly.
+之前点「删除」是立即执行的物理删除，而它紧挨着「切换」按钮，误点一下就没了。
+这一版补上确认步骤，并修正了一个导致确认框永远无法显示的层级问题。
 
-### Fixed
+### 新增
 
-- `ConfirmDialog` was pinned at `z-index: 100`, underneath the runtime store (120) and
-  the install-location dialog (140), so it could not appear on top of them.
+- **删除前二次确认**。弹窗会写明具体版本与目录（例如 `21.0.13 · zulu-21.0.13`），
+  并明确告知文件是**彻底删除、不进回收站、无法撤销**，需要时可在版本库重新下载。
 
-## [4.1.0] - 2026-10-29
+### 修复
 
-Installs stop assuming the C drive. Before downloading anything, JunctionBox now asks
-where the runtime should go — and proposes the folder you already keep versions in.
+- `ConfirmDialog` 的层级固定为 `z-index: 100`，低于版本库面板（120）与安装选址框（140），
+  导致它一直被压在下面。现已提升至 400。该组件此前其实从未真正显示过。
 
-### Added
+### 注意
 
-- **Install-location prompt.** Clicking *Install* opens a small dialog instead of
-  writing to `%LOCALAPPDATA%` silently. It scans the machine, and if JDK 17 lives in
-  `E:\develop\Java\jdk` it offers to put JDK 25 in `E:\develop\Java` next to it — one
-  click. Decline and you pick the folder yourself.
-- **Location detection** (`installer.suggestRoot`). Groups discovered runtimes by their
-  parent directory, drops our own store, `AppData`, drive roots and `Program Files`,
-  ranks by hit count then depth, and probes writability.
-- **Remembered location** per runtime kind in `%APPDATA%\JavaDevTool\roots.json`, with
-  *更改* / *恢复默认* in the store footer. The currently effective path is shown there
-  too, so it is never a mystery where the next install lands.
-- **Install ledger** (`installed.json`) recording exactly which directories this app
-  created.
-- New IPC: `store:plan`, `store:set-root`, `store:pick-root`; `store:install` now takes
-  the target root and a *remember* flag.
+- 版本库的「删除」即使确认后仍是物理删除，不会进入回收站。
 
-### Changed
+## [4.1.0] - 2026-10-29 · 安装前先问你装哪儿
 
-- With no existing runtime found, the path field stays empty and the dialog states that
-  the default is on `C:` — you have to pick something rather than accept a hidden default.
-- **Delete is driven by the ledger, not by path prefix.** The install location may now be
-  your own `E:\develop\Java`, full of your own JDKs; the uninstaller refuses anything it
-  did not install, and those rows no longer show a delete button at all.
-- Location is validated *before* the download (absolute, not a drive root, not a runtime
-  itself, writable), so a bad target fails in a second instead of after 190 MB.
-- Confirmed install locations are also registered as scan paths, so versions there stay
-  visible even if the default location is later changed back.
+版本库不再默认把运行时塞进 C 盘。点「安装」会先扫描本机已有的同类版本，
+建议装到它们旁边，装在哪里由你决定。
 
-### Fixed
+### 新增
 
-- A same-named directory in a user-owned location is no longer deleted to make room;
-  the new runtime gets a `-2` suffix instead.
+- **安装位置确认框**。点「安装」不再直接写入 `%LOCALAPPDATA%`。程序会扫描本机，
+  例如发现 JDK 17 在 `E:\develop\Java\jdk`，就建议把 JDK 25 装进 `E:\develop\Java`
+  （同级目录），一次点击即可；不同意则自行选择目录。
+- **安装位置推荐**（`installer.suggestRoot`）。按父目录归组已发现的运行时，
+  排除程序自己的版本库、`AppData`、盘符根目录与 `Program Files`，
+  再按命中数量与层级排序，并实际写探针确认目录可写。
+- **记住安装位置**。按 JDK / Node 分别存入 `%APPDATA%\JavaDevTool\roots.json`，
+  版本库底部显示当前生效位置，可随时「更改」或「恢复默认」。
+- **安装台账**（`installed.json`），记录哪些目录由本程序创建。
+- 新增 IPC：`store:plan`、`store:set-root`、`store:pick-root`；
+  `store:install` 增加目标根目录与「记住」参数。
 
-## [4.0.0] - 2026-10-29
+### 调整
 
-Runtime store — JunctionBox can now install runtimes, not only switch between them.
-This is the first major release: the tool stops assuming you already have two
-versions of everything.
+- 一个同类版本都没检测到时，路径框留空并明说「默认位置在 C 盘」，由你先选目录，
+  而不是默默接受一个隐藏默认值。
+- **删除权限改由台账决定，不再看路径前缀**。安装位置可能就指向你自己的
+  `E:\develop\Java`，那里的版本是别人的环境；现在只有本程序装过的目录才允许删除，
+  其余行根本不显示删除按钮。
+- 目标目录在**下载之前**就校验（绝对路径、非盘符根、不是运行时本身、可写），
+  填错一秒内报错，而不是下完 190 MB 才失败。
+- 确认过的安装位置同时登记为扫描路径，之后即使把默认位置改回去，那里的版本依然可见。
 
-### Added
+### 修复
 
-- **Runtime store.** A curated catalog of five JDKs (8, 11, 17, 21, 25) and four
-  Node.js LTS lines (20, 22, 24, 26), reachable from the **版本库 / Store** button
-  on either version page. Pick one → download → unpack → switch, in one action.
-- **Mirror fallback per entry.** JDK: Azul CDN → Tsinghua Adoptium mirror.
-  Node: npmmirror → Tsinghua → nodejs.org. The first source that responds wins.
-- **Cancellable streaming downloads** with live percentage, transferred bytes and
-  throughput, surfaced through a new `install:progress` IPC channel.
-- **Install-location override.** `%APPDATA%\JavaDevTool\runtimes.txt` takes an
-  absolute path on its first line; runtimes then live under it instead of
-  `%LOCALAPPDATA%`.
-- **Guided empty state.** When only 0–1 versions are detected, both version pages
-  show an inline banner pointing at the store — the exact case this release exists
-  for.
-- `npm run catalog:update` — regenerates `electron/catalog.cjs` from the Azul
-  metadata API and the npmmirror index.
+- 用户自有目录下已存在同名文件夹时，不再为腾地方而删除它，改为追加 `-2` 后缀。
 
-### Changed
+## [4.0.0] - 2026-10-29 · 内置版本库
 
-- Runtime discovery now also scans
-  `%LOCALAPPDATA%\JavaDevTool\runtimes\{jdk,node}`, so store-installed versions
-  appear in the normal list and behave like any other install.
-- Vendor names from the JDK `release` file are normalised (`Azul Systems, Inc.` →
-  `Azul Zulu`), so the list reads consistently regardless of the distribution.
-- Deleting a runtime is restricted to directories inside the runtime root, refuses
-  junctions, and refuses the version currently in use.
+第一个大版本。此前工具只负责「切换已装好的版本」，前提是你得先有两个版本；
+这一版把「装」也做了进来。
 
-### Notes
+### 新增
 
-- The installer is still ~108 MB: the catalog ships metadata only. Bundling the
-  nine runtimes would push every release past 600 MB.
+- **版本库**。内置 5 个 JDK（8 / 11 / 17 / 21 / 25）与 4 条 Node.js LTS 线
+  （20 / 22 / 24 / 26），从两个版本页右上角的「版本库」进入。
+  选中 → 下载 → 解压 → 切换，一次完成。
+- **每个版本多镜像回退**。JDK：Azul CDN → 清华 Adoptium 镜像；
+  Node：npmmirror → 清华 → 官方源。谁先响应用谁。
+- **可取消的流式下载**，实时显示百分比、已传输字节与速率，
+  通过新增的 `install:progress` 通道推送到界面。
+- **安装位置覆盖**。`%APPDATA%\JavaDevTool\runtimes.txt` 首行写绝对路径，
+  运行时即改为装在该目录下（4.1.0 起被图形化选址取代，但仍兼容）。
+- **空状态引导**。检测到 0～1 个版本时，两个版本页都会显示引导条指向版本库。
+- `npm run catalog:update`，从 Azul 元数据接口与 npmmirror 索引重新生成清单。
 
-## [3.0.7] - 2026-10-29
+### 调整
 
-Identifier cleanup — no functional change. The binaries are otherwise identical to 3.0.6.
+- 版本发现范围增加 `%LOCALAPPDATA%\JavaDevTool\runtimes\{jdk,node}`，
+  版本库安装的版本与手工安装的版本在列表中行为一致。
+- JDK `release` 文件中的厂商名做归一化（`Azul Systems, Inc.` → `Azul Zulu`）。
+- 删除运行时限制在版本库根目录内，拒绝删除联接，拒绝删除当前正在使用的版本。
 
-### Changed
+### 注意
 
-- In-app product name unified to `JunctionBox`: title bar, About page, window
-  title, and the `meta:info` payload no longer report the legacy Chinese name.
-- `AppUserModelId` aligned with the installer `appId`
-  (`com.github.largeakon.junctionbox`), so taskbar grouping and notifications
-  carry the product name.
+- 安装包仍是约 108 MB：清单里只有元数据。九个运行时全部内置会让每个版本超过 600 MB。
 
-### Notes
+## [3.0.7] - 2026-10-29 · 产品标识统一
 
-- The on-disk data directories keep their historical names
-  (`%LOCALAPPDATA%\JavaDevTool`, `%APPDATA%\JavaDevTool`) on purpose — renaming
-  them would orphan every existing junction and custom scan path.
+功能与 3.0.6 完全一致，仅修正产品标识。**推荐使用这一版**。
 
-## [3.0.6] - 2026-10-29
+### 调整
 
-First public release.
+- 应用内产品名统一为 `JunctionBox`：标题栏、关于页、窗口标题、
+  `meta:info` 返回值不再出现旧的中文名。
+- `AppUserModelId` 与安装包 `appId` 对齐
+  （`com.github.largeakon.junctionbox`），任务栏分组与通知显示正确名称。
 
-### Added
+### 注意
 
-- **Port inspector** — lists listening ports with process name and full command
-  line, one-click process termination. Uses a single `netstat -ano` pass plus one
-  CIM process query (~600 ms for a full sweep).
-- **JDK switcher** — auto-discovers JDKs from common vendor directories,
-  `~\.jdks`, and the current `Path`; switches in ~15 ms.
-- **Node switcher** — auto-discovers Node installations including nvm-windows
-  and Volta layouts; shows version, architecture and bundled npm version.
-- **Junction-based switching** — environment variables are configured once and
-  point at stable junctions. Switching re-points the junction only: no registry
-  writes, no environment broadcast, no admin rights.
-- **PATH editor** — register custom scan directories through a directory picker.
-- **Startup self-healing** — rebuilds deleted junctions, repairs broken PATH
-  entries, and falls back to software rendering after repeated GPU crashes.
-- **Fluent 2 UI** — Mica backdrop, custom title bar, element-level page
-  transitions without full-page fades.
+- 磁盘数据目录保留历史名称（`%LOCALAPPDATA%\JavaDevTool`、`%APPDATA%\JavaDevTool`），
+  这是有意的：改名会让所有已存在的联接与自定义扫描路径失效。
 
-### Notes
+## [3.0.6] - 2026-10-29 · 首个公开版本
 
-- Binaries are not code-signed; SmartScreen may warn on first launch.
-- UI language is Simplified Chinese. English UI is on the roadmap.
+### 新增
+
+- **端口检测**：列出监听端口、进程名与完整命令行，一键结束进程。
+  一次 `netstat -ano` 加一次 CIM 进程查询，全量扫描约 600 ms。
+- **JDK 切换**：自动发现各厂商目录、`~\.jdks` 与 `Path` 中的 JDK，
+  切换约 15 ms。
+- **Node 切换**：自动发现 Node 安装，兼容 nvm-windows 与 Volta 布局，
+  显示版本、架构与内置 npm 版本。
+- **基于目录联接的切换**：环境变量只配置一次并指向固定联接，
+  切换仅重指联接——不写注册表、不广播环境变量、不需要管理员权限。
+- **PATH 编辑**：通过目录选择器登记自定义扫描路径。
+- **启动自愈**：重建被删除的联接、修复失效的 PATH 条目，
+  GPU 反复崩溃后自动降级为软件渲染。
+- **Fluent 2 界面**：Mica 材质、自绘标题栏、元素级页面转场。
+
+### 注意
+
+- 二进制未签名，首次运行可能触发 SmartScreen 提示。
+- 界面语言为简体中文，英文界面在路线图中。
