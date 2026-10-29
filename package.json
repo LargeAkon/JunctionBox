@@ -29,8 +29,8 @@
   "scripts": {
     "dev": "node scripts/dev.mjs",
     "build": "vite build",
-    "dist": "vite build && electron-builder --win --x64",
-    "dist:dir": "vite build && electron-builder --win --x64 --dir"
+    "dist": "vite build && electron-builder --win --x64 --publish never",
+    "dist:dir": "vite build && electron-builder --win --x64 --publish never --dir"
   },
   "dependencies": {
     "vue": "^3.5.29"
