@@ -90,9 +90,11 @@ let out;
 if (!hit) {
   // 文档漏写不该堵住发版，但要明确告诉人这里缺东西
   console.warn(`[release-notes] CHANGELOG.md 中没有 ${version} 的段落，输出占位说明`);
-  out = `## v${version}\n\n本版本的详细变更尚未写入 \`CHANGELOG.md\`。\n${footer(version)}\n`;
+  out = `本版本的详细变更尚未写入 \`CHANGELOG.md\`。\n${footer(version)}\n`;
 } else {
-  out = `## v${version}${hit.theme ? " · " + hit.theme : ""}\n\n${hit.body}\n${footer(version)}\n`;
+  // 标题已经由 release 的 name（vX.Y.Z）承担，正文不再重复版本号，只留主题
+  const lead = hit.theme ? `**${hit.theme}**\n\n` : "";
+  out = `${lead}${hit.body}\n${footer(version)}\n`;
 }
 
 if (outFile) {
