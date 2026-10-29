@@ -68,6 +68,12 @@ JunctionBox 把这两件事做成点一下鼠标。其中版本切换用的是 *
   <tr>
     <td colspan="2" align="center"><sub><b>版本库</b> — 不用离开程序就能装一个新版本</sub></td>
   </tr>
+  <tr>
+    <td colspan="2"><img src="docs/screenshots/6-location.png" alt="安装位置" /></td>
+  </tr>
+  <tr>
+    <td colspan="2" align="center"><sub><b>安装位置</b> — 装之前先问一句，默认建议和你现有的版本放同一个目录</sub></td>
+  </tr>
 </table>
 
 ## 下载与安装
@@ -123,13 +129,19 @@ JunctionBox 把这两件事做成点一下鼠标。其中版本切换用的是 *
   解压用 Windows 10 1803+ 自带的 `tar.exe`（bsdtar），实测 190MB 的包 **1 秒**解完。
 - 每个版本都有**备用源**：JDK 走 Azul CDN → 清华镜像，Node 走 npmmirror → 清华 → 官方源。
   谁先响应就用谁，单个站点被墙不影响功能。
-- 全部装在 `%LOCALAPPDATA%\JavaDevTool\runtimes\`，用户级目录，**不弹 UAC**，不碰 `Program Files`。
+- 安装位置**每次都会先问你**：点「安装」先弹一个选址框。程序会扫描你机器上已有的 JDK / Node，
+  例如发现 JDK 17 在 `E:\develop\Java\jdk`，就建议 JDK 25 也装进 `E:\develop\Java`（同级目录），
+  一次点击即可；不同意就自己选目录，**不会默默塞进 C 盘**。
+- 没扫到任何已有版本时不会预填路径，而是明说「默认位置在 C 盘」，让你先选一个常用目录。
+- 勾了「以后都装到这里」后记住该位置（JDK / Node 各存一份），下次直接复用；版本库底部可以随时「更改」或「恢复默认」。
 - 下载会校验字节数是否完整；解压先进临时目录，确认 `bin\java.exe`（或 `node.exe`）存在后才挪到正式位置。
   中途取消或失败，不会在列表里留下半个 JDK。
 - 你已经装过同一个大版本？版本库会显示「已安装」并让你直接切换，不会再下 190MB 重装一份。
+- **删除只对自己装的版本生效**。安装位置可以指到你自己的 JDK 目录，那里的版本不会被本程序删除。
 
-想把文件放到别的盘：新建 `%APPDATA%\JavaDevTool\runtimes.txt`，第一行写一个绝对路径，
-`jdk\` 与 `node\` 会建在它下面。
+安装位置存在 `%APPDATA%\JavaDevTool\roots.json`（`{"jdk":"E:\\develop\\Java"}` 这样的结构），
+安装记录存在 `installed.json`。什么都不设置时用默认位置 `%LOCALAPPDATA%\JavaDevTool\runtimes\`。
+旧版的 `%APPDATA%\JavaDevTool\runtimes.txt` 仍然兼容。
 
 > 清单更新：`npm run catalog:update` 会重新读取 Azul 元数据接口与 npmmirror 索引，
 > 重写 `electron/catalog.cjs`。
@@ -170,12 +182,13 @@ electron/
   main.cjs      窗口创建、Mica、IPC 注册、启动自愈、GPU 降级
   core.cjs      端口扫描、版本发现、联接操作、环境变量读写
   catalog.cjs   内置 JDK / Node 清单（元数据 + 镜像地址，不含二进制）
-  installer.cjs 下载 → 校验 → 解压 → 原子落位，支持取消
+  installer.cjs 下载 → 校验 → 解压 → 原子落位；安装位置探测、安装记录与删除保护
   preload.cjs   contextBridge 暴露 window.api
 src/
   App.vue       自绘标题栏、导航、状态栏
   views/        PortsView（端口）、JdkView、NodeView、AboutView
-  components/   VersionPanel（版本切换）、RuntimeStore（版本库）、ConfirmDialog
+  components/   VersionPanel（版本切换）、RuntimeStore（版本库）、
+                InstallLocationDialog（安装选址）、ConfirmDialog
   store.js      共享响应式状态
   style.css     Fluent 2 设计令牌与元素级动效
 scripts/
@@ -230,8 +243,10 @@ npm run dist     # 打包 NSIS 安装包 + 便携版 exe
 需要，这就是上面那个取舍。除此之外的功能（端口扫描、切换、版本发现）完全离线可用。
 
 **下载的 JDK / Node 装在哪？**
+装在你选的地方。点安装会先弹选址框，默认建议和你已有的版本放在同一个目录
+（例如 JDK 17 在 `E:\develop\Java\jdk`，就建议 JDK 25 也装进 `E:\develop\Java`），
+也可以自己挑。选择记在 `%APPDATA%\JavaDevTool\roots.json`；没设置过时用
 `%LOCALAPPDATA%\JavaDevTool\runtimes\{jdk,node}`。不写系统目录、不弹 UAC。
-想换盘就改 `%APPDATA%\JavaDevTool\runtimes.txt`。
 
 **能删掉下载的版本吗？**
 能，点「删除」。但只对版本库自己装的版本生效，且当前正在使用的不允许删；

@@ -42,6 +42,7 @@
   --danger: #c42b1c;
   --danger-soft: rgba(196, 43, 28, 0.10);
   --success: #0f7b0f;
+  --warning: #8a6100;
 
   --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.045);
   --shadow: 0 1px 2px rgba(0, 0, 0, 0.05), 0 4px 14px rgba(0, 0, 0, 0.045);
@@ -69,6 +70,7 @@ html.dark {
   --danger: #ff99a4;
   --danger-soft: rgba(255, 153, 164, 0.13);
   --success: #6ccb5f;
+  --warning: #e3b341;
 
   --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.24);
   --shadow: 0 1px 2px rgba(0, 0, 0, 0.28), 0 4px 14px rgba(0, 0, 0, 0.22);

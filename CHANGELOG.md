@@ -5,6 +5,45 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [4.1.0] - 2026-10-29
+
+Installs stop assuming the C drive. Before downloading anything, JunctionBox now asks
+where the runtime should go — and proposes the folder you already keep versions in.
+
+### Added
+
+- **Install-location prompt.** Clicking *Install* opens a small dialog instead of
+  writing to `%LOCALAPPDATA%` silently. It scans the machine, and if JDK 17 lives in
+  `E:\develop\Java\jdk` it offers to put JDK 25 in `E:\develop\Java` next to it — one
+  click. Decline and you pick the folder yourself.
+- **Location detection** (`installer.suggestRoot`). Groups discovered runtimes by their
+  parent directory, drops our own store, `AppData`, drive roots and `Program Files`,
+  ranks by hit count then depth, and probes writability.
+- **Remembered location** per runtime kind in `%APPDATA%\JavaDevTool\roots.json`, with
+  *更改* / *恢复默认* in the store footer. The currently effective path is shown there
+  too, so it is never a mystery where the next install lands.
+- **Install ledger** (`installed.json`) recording exactly which directories this app
+  created.
+- New IPC: `store:plan`, `store:set-root`, `store:pick-root`; `store:install` now takes
+  the target root and a *remember* flag.
+
+### Changed
+
+- With no existing runtime found, the path field stays empty and the dialog states that
+  the default is on `C:` — you have to pick something rather than accept a hidden default.
+- **Delete is driven by the ledger, not by path prefix.** The install location may now be
+  your own `E:\develop\Java`, full of your own JDKs; the uninstaller refuses anything it
+  did not install, and those rows no longer show a delete button at all.
+- Location is validated *before* the download (absolute, not a drive root, not a runtime
+  itself, writable), so a bad target fails in a second instead of after 190 MB.
+- Confirmed install locations are also registered as scan paths, so versions there stay
+  visible even if the default location is later changed back.
+
+### Fixed
+
+- A same-named directory in a user-owned location is no longer deleted to make room;
+  the new runtime gets a `-2` suffix instead.
+
 ## [4.0.0] - 2026-10-29
 
 Runtime store — JunctionBox can now install runtimes, not only switch between them.

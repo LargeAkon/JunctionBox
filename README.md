@@ -65,6 +65,12 @@ JunctionBox solves both. Version switching is done by re-pointing an **NTFS dire
   <tr>
     <td colspan="2" align="center"><sub><b>Runtime store</b> — install a JDK or Node version without leaving the app</sub></td>
   </tr>
+  <tr>
+    <td colspan="2"><img src="docs/screenshots/6-location.png" alt="Install location" /></td>
+  </tr>
+  <tr>
+    <td colspan="2" align="center"><sub><b>Install location</b> — asked before every download, defaulting to the folder your other versions live in</sub></td>
+  </tr>
 </table>
 
 > The UI is Simplified Chinese in this release. English is on the [roadmap](#roadmap).
@@ -122,16 +128,25 @@ Why the installer stays at ~108 MB instead of ~600 MB:
 - Every entry has **fallback sources** — Azul CDN → Tsinghua mirror for JDKs,
   npmmirror → Tsinghua → nodejs.org for Node. The first one that responds wins,
   so a single blocked host does not break the feature.
-- Everything lands in `%LOCALAPPDATA%\JavaDevTool\runtimes\` — user scope, no
-  admin prompt, nothing written to `Program Files`.
+- The install location is **asked every time**. Clicking *Install* opens a picker that
+  first scans your machine for existing runtimes — if JDK 17 lives in `E:\develop\Java\jdk`,
+  it offers to put JDK 25 in `E:\develop\Java` next to it (one click). Decline, and you
+  choose the folder yourself. Nothing is silently dropped into `C:`.
+- With no existing runtime detected, the path field starts empty and the dialog says
+  outright that the default lives on `C:` — pick a folder you actually use.
+- Tick *always install here* to remember the location (stored separately for JDK and
+  Node); change or reset it any time from the store footer.
 - Downloads are length-verified, unpacked into a temp folder, and only moved into
   place after `bin\java.exe` (or `node.exe`) is confirmed to exist. A cancelled or
   failed download never leaves a half-installed runtime in the list.
 - Already have that major version installed elsewhere? The store shows it as
   installed and offers to switch, instead of downloading a duplicate 190 MB.
+- **Delete only applies to runtimes JunctionBox installed.** The install location may
+  point at your own JDK folder; versions there are never touched by the uninstaller.
 
-Need the files on another drive? Create `%APPDATA%\JavaDevTool\runtimes.txt` with
-a single absolute path on the first line; `jdk\` and `node\` are created under it.
+Locations are stored in `%APPDATA%\JavaDevTool\roots.json` (one entry per kind) and the
+install ledger in `installed.json`. With nothing configured the default is
+`%LOCALAPPDATA%\JavaDevTool\runtimes\`. The older `runtimes.txt` override still works.
 
 > Refreshing the catalog: `npm run catalog:update` re-reads the Azul metadata API
 > and the npmmirror index and rewrites `electron/catalog.cjs`.
@@ -229,8 +244,11 @@ Yes — that is the tradeoff above. Everything else (port scanning, switching,
 discovery) works fully offline.
 
 **Where does it put downloaded runtimes?**
-`%LOCALAPPDATA%\JavaDevTool\runtimes\{jdk,node}`. Nothing is installed system-wide
-and no admin prompt appears. Override the location with `%APPDATA%\JavaDevTool\runtimes.txt`.
+Wherever you say. The install dialog proposes the folder your existing runtimes already
+live in (`E:\develop\Java`, say) and lets you pick another one. The choice is remembered
+in `%APPDATA%\JavaDevTool\roots.json`; with nothing configured it falls back to
+`%LOCALAPPDATA%\JavaDevTool\runtimes\{jdk,node}`. Nothing is installed system-wide and no
+admin prompt appears.
 
 **Can I delete a downloaded runtime from the app?**
 Yes, with the **删除** button — but only for versions the store installed, and only

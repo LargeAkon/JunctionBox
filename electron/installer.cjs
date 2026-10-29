@@ -31,33 +31,273 @@ const { spawn } = require("child_process");
 const UA =
   "JunctionBox/4 (Windows; +https://github.com/LargeAkon/JunctionBox)";
 
-// ---------------------------------------------------------------- 路径
+// ---------------------------------------------------------------- 配置目录
 function localBase() {
   return process.env.LOCALAPPDATA || path.join(os.homedir(), "AppData", "Local");
 }
 
-/**
- * 自定义安装位置：若存在 %APPDATA%\JavaDevTool\runtimes.txt，
- * 就把它第一行当作根目录（C 盘紧张的用户可以指到别的盘）。
- * 没做界面，是因为这属于一次性设置，写一行文本比加一个设置页更省事。
- */
-function customBase() {
-  const f = path.join(os.homedir(), "AppData", "Roaming", "JavaDevTool", "runtimes.txt");
+function cfgDir() {
+  const d = path.join(os.homedir(), "AppData", "Roaming", "JavaDevTool");
   try {
-    const t = fs.readFileSync(f, "utf8").split(/\r?\n/)[0].trim().replace(/^"|"$/g, "");
-    if (t && path.isAbsolute(t)) return t;
+    fs.mkdirSync(d, { recursive: true });
   } catch (e) {
     /* ignore */
   }
-  return "";
+  return d;
 }
 
-/** 版本库根目录：默认 %LOCALAPPDATA%\JavaDevTool\runtimes\<jdk|node> */
+function cfgFile(name) {
+  return path.join(cfgDir(), name);
+}
+
+function readJson(f, def) {
+  try {
+    return JSON.parse(fs.readFileSync(f, "utf8"));
+  } catch (e) {
+    return def;
+  }
+}
+
+function writeJson(f, obj) {
+  try {
+    fs.mkdirSync(path.dirname(f), { recursive: true });
+    fs.writeFileSync(f, JSON.stringify(obj, null, 2), "utf8");
+    return true;
+  } catch (e) {
+    return false;
+  }
+}
+
+const rootsFile = () => cfgFile("roots.json");
+const recordFile = () => cfgFile("installed.json");
+
+// ---------------------------------------------------------------- 安装位置
+/**
+ * 安装位置分三层：
+ *
+ *   rootOf(kind)      —— 当前生效的位置（用户选过的 > 默认）
+ *   defaultRoot(kind) —— 从没选过时的位置：%LOCALAPPDATA%\JavaDevTool\runtimes\<kind>
+ *   suggestRoot()     —— 从用户自己已有的 JDK / Node 反推「他习惯把版本放在哪」
+ *
+ * 为什么要有第三层：用户机器上 JDK 17 在 E:\develop\Java，默认给他装到 C 盘
+ * 的隐藏目录里，等于把开发环境拆成两半——以后重装系统、迁移磁盘时只有一半
+ * 找得到。所以点「安装」时先问一句：装到 E:\develop\Java 行不行？
+ */
+function defaultRoot(kind) {
+  const k = kind === "jdk" ? "jdk" : "node";
+  // 兼容 v4.0.x 的手工配置：%APPDATA%\JavaDevTool\runtimes.txt 第一行是基目录
+  const legacy = (() => {
+    try {
+      const t = fs.readFileSync(cfgFile("runtimes.txt"), "utf8").split(/\r?\n/)[0].trim().replace(/^"|"$/g, "");
+      if (t && path.isAbsolute(t)) return t;
+    } catch (e) {
+      /* ignore */
+    }
+    return "";
+  })();
+  if (legacy) return path.join(legacy, k);
+  return path.join(localBase(), "JavaDevTool", "runtimes", k);
+}
+
+/** 当前生效的安装位置（只解析，不创建目录——扫描时可能遇到掉线的网络盘） */
+function rootOf(kind) {
+  const cfg = readJson(rootsFile(), {}) || {};
+  const v = cfg[kind === "jdk" ? "jdk" : "node"];
+  if (typeof v === "string" && v && path.isAbsolute(v)) return path.resolve(v);
+  return path.resolve(defaultRoot(kind));
+}
+
+/** 实际写入用的根目录（会创建） */
 function runtimeRoot(kind) {
-  const root = customBase() || path.join(localBase(), "JavaDevTool", "runtimes");
-  const d = path.join(root, kind === "jdk" ? "jdk" : "node");
-  fs.mkdirSync(d, { recursive: true });
+  const d = rootOf(kind);
+  try {
+    fs.mkdirSync(d, { recursive: true });
+  } catch (e) {
+    /* ignore */
+  }
   return d;
+}
+
+/** 记住安装位置。传空字符串 = 恢复默认。 */
+function setRoot(kind, dir) {
+  const k = kind === "jdk" ? "jdk" : "node";
+  const cfg = readJson(rootsFile(), {}) || {};
+  if (!dir) delete cfg[k];
+  else cfg[k] = path.resolve(String(dir));
+  return writeJson(rootsFile(), cfg);
+}
+
+/** 是否显式设置过（用于界面区分「用户选的」和「系统默认」） */
+function rootIsCustom(kind) {
+  const cfg = readJson(rootsFile(), {}) || {};
+  return typeof cfg[kind === "jdk" ? "jdk" : "node"] === "string";
+}
+
+// ---------------------------------------------------------------- 安装记录
+/**
+ * 记录「哪些目录是 JunctionBox 装的」。
+ * 只凭目录名猜是不行的：一旦用户把安装位置指到自己的 E:\develop\Java，
+ * 那个目录里全是他自己的 JDK，误删一个就是灾难。所以：
+ *   - 只有装过的目录才允许删除，且必须在本程序装完之后写进记录
+ *   - v4.0.x 没有记录文件，默认目录（runtimes\<kind>）下的目录仍视为自己装的
+ */
+function recorded(kind) {
+  const k = kind === "jdk" ? "jdk" : "node";
+  const all = readJson(recordFile(), {}) || {};
+  const arr = Array.isArray(all[k]) ? all[k] : [];
+  return arr.filter((s) => typeof s === "string" && s);
+}
+
+function saveRecorded(kind, arr) {
+  const k = kind === "jdk" ? "jdk" : "node";
+  const all = readJson(recordFile(), {}) || {};
+  all[k] = [...new Set(arr)];
+  writeJson(recordFile(), all);
+}
+
+function record(kind, dir) {
+  const p = path.resolve(String(dir));
+  const arr = recorded(kind);
+  if (arr.some((x) => x.toLowerCase() === p.toLowerCase())) return;
+  arr.push(p);
+  saveRecorded(kind, arr);
+}
+
+function unrecord(kind, dir) {
+  const p = path.resolve(String(dir)).toLowerCase();
+  saveRecorded(kind, recorded(kind).filter((x) => path.resolve(x).toLowerCase() !== p));
+}
+
+const inDir = (child, parent) => {
+  const rel = path.relative(path.resolve(parent), path.resolve(child));
+  return !!rel && !rel.startsWith("..") && !path.isAbsolute(rel);
+};
+
+/** 这个目录是否由本程序安装（决定「删除」按钮是否出现） */
+function isManaged(kind, dir) {
+  const p = path.resolve(String(dir || ""));
+  if (!p) return false;
+  if (path.basename(p).startsWith(".tmp_")) return false;
+  if (recorded(kind).some((x) => path.resolve(x).toLowerCase() === p.toLowerCase())) return true;
+  return inDir(p, defaultRoot(kind));
+}
+
+// ---------------------------------------------------------------- 位置推荐
+const SKIP_PARENTS = new Set([
+  "c:\\", "d:\\", "e:\\", "f:\\", "g:\\",
+  "c:\\program files", "c:\\program files (x86)",
+  "c:\\windows", "c:\\windows\\system32", "c:\\programdata",
+]);
+
+function writable(dir) {
+  try {
+    const probe = path.join(dir, ".jbox_probe_" + process.pid);
+    fs.mkdirSync(probe);
+    fs.rmdirSync(probe);
+    return true;
+  } catch (e) {
+    return false;
+  }
+}
+
+/**
+ * 从「用户已有的运行时目录」反推安装位置。
+ * JDK 的真实目录是 <X>\jdk17（里面有 bin\java.exe），所以候选 = 它的上级 <X>；
+ * Node 同理。然后按命中数量排序，命中越多说明用户越是把版本堆在那一处。
+ *
+ * @param {"jdk"|"node"} kind
+ * @param {string[]} dirs 已发现的运行时目录（真实路径）
+ */
+function suggestRoot(kind, dirs) {
+  const own = rootOf(kind).toLowerCase();
+  const groups = new Map();
+
+  for (const raw of dirs || []) {
+    if (!raw) continue;
+    let p;
+    try {
+      p = path.resolve(raw);
+    } catch (e) {
+      continue;
+    }
+    const low = p.toLowerCase();
+    // 本程序装的、以及藏在 AppData 里的，都不代表用户的使用习惯
+    if (low === own || low.startsWith(own + "\\")) continue;
+    if (/\\appdata\\/i.test(low)) continue;
+    if (/\\javadevtool\\/i.test(low)) continue;
+
+    const parent = path.dirname(p);
+    const pl = parent.toLowerCase();
+    if (SKIP_PARENTS.has(pl) || pl === low) continue;
+    if (path.basename(p).startsWith(".tmp_")) continue;
+
+    const g = groups.get(pl) || { root: parent, count: 0, names: [] };
+    g.count++;
+    if (g.names.length < 4) g.names.push(path.basename(p));
+    groups.set(pl, g);
+  }
+
+  const list = [...groups.values()]
+    .map((g) => ({
+      ...g,
+      depth: g.root.split(path.sep).length,
+      writable: writable(g.root),
+      isDefault: g.root.toLowerCase() === own,
+    }))
+    // 版本数多的优先；同样多时取更深的目录（E:\develop\Java 比 E:\develop 更准确）
+    .sort((a, b) => b.count - a.count || b.depth - a.depth || a.root.localeCompare(b.root));
+
+  const best = list.find((g) => g.writable) || list[0] || null;
+  return {
+    root: best ? best.root : "",
+    count: best ? best.count : 0,
+    names: best ? best.names : [],
+    writable: best ? best.writable : false,
+    candidates: list.slice(0, 5),
+  };
+}
+
+/**
+ * 校验一个安装位置。返回 { ok, err, path }。
+ * 校验会顺手把目录建出来——反正紧接着就要往里写文件，
+ * 提前建还能当场发现「没有写权限」而不是下载完 190MB 才失败。
+ */
+function checkRoot(kind, dir) {
+  const raw = String(dir || "").trim().replace(/^"|"$/g, "");
+  if (!raw) return { ok: false, err: "请选择安装位置" };
+  if (!path.isAbsolute(raw)) return { ok: false, err: "请填写完整路径，例如 E:\\develop\\Java" };
+
+  const p = path.resolve(raw);
+  if (/^[a-z]:\\?$/i.test(p)) {
+    return { ok: false, err: "不要直接装在盘符根目录，建议单独建一层，例如 E:\\develop\\Java" };
+  }
+  if (p.length > 180) return { ok: false, err: "路径太长，请换一个短一些的目录" };
+
+  // 不能指向「自己就是一个 JDK / Node」的目录，否则会套出一层 zulu-25.0.1\zulu-25.0.1
+  const probe = kind === "jdk" ? path.join(p, "bin", "java.exe") : path.join(p, "node.exe");
+  if (fs.existsSync(probe)) {
+    return {
+      ok: false,
+      err: `这个目录本身就是一个 ${kind === "jdk" ? "JDK" : "Node"}，请选它的上级目录`,
+    };
+  }
+
+  try {
+    fs.mkdirSync(p, { recursive: true });
+  } catch (e) {
+    return { ok: false, err: "无法创建目录：" + (e && e.message ? e.message : e) };
+  }
+  if (!writable(p)) {
+    return { ok: false, err: "这个目录不可写（可能需要管理员权限），请换一个位置" };
+  }
+  return { ok: true, path: p };
+}
+
+/** 目标目录重名且不属于自己时，往后找一个空位，绝不覆盖用户的目录 */
+function freeName(root, name) {
+  let p = path.join(root, name);
+  for (let i = 2; fs.existsSync(p) && i < 30; i++) p = path.join(root, `${name}-${i}`);
+  return p;
 }
 
 // ---------------------------------------------------------------- 任务上下文
@@ -321,17 +561,19 @@ function rmDir(p) {
  * @param {"jdk"|"node"} kind
  * @param {object} item catalog 条目
  * @param {function} report 进度回调
+ * @param {{root?:string}} [opts] 本次安装的目标根目录，缺省用已记住的位置
  */
-async function install(kind, item, report) {
+async function install(kind, item, report, opts) {
   const ctx = createCtx(item.id, report);
   activeJobs.set(item.id, ctx);
 
-  const root = runtimeRoot(kind);
+  const root = path.resolve((opts && opts.root) || runtimeRoot(kind));
   const stamp = Date.now();
   const tmp = path.join(root, `.tmp_${item.id}_${stamp}`);
   const zip = path.join(os.tmpdir(), `jbox_${item.id}_${stamp}.zip`);
 
   try {
+    fs.mkdirSync(root, { recursive: true });
     ctx.report({ phase: "download", pct: 0, got: 0, total: 0, speed: 0 });
     const srcIdx = await downloadAny(item.sources, zip, ctx);
 
@@ -351,15 +593,19 @@ async function install(kind, item, report) {
     }
 
     const name = kind === "jdk" ? jdkDirName(inner) : nodeDirName(inner);
-    const finalPath = path.join(root, name);
+    let finalPath = path.join(root, name);
 
-    // 同版本重装：先清掉旧目录，避免 rename 失败
-    if (fs.existsSync(finalPath)) rmDir(finalPath);
+    // 同版本重装：清掉自己上次装的；不属于自己的同名目录一律让位，不删
+    if (fs.existsSync(finalPath)) {
+      if (isManaged(kind, finalPath)) rmDir(finalPath);
+      else finalPath = freeName(root, name);
+    }
     fs.renameSync(inner, finalPath);
     if (fs.existsSync(tmp)) rmDir(tmp);
 
-    ctx.report({ phase: "done", path: finalPath, name, source: srcIdx });
-    return { ok: true, path: finalPath, name };
+    record(kind, finalPath);
+    ctx.report({ phase: "done", path: finalPath, name, source: srcIdx, root });
+    return { ok: true, path: finalPath, name, root };
   } catch (e) {
     const msg = String((e && e.message) || e);
     ctx.report({ phase: ctx.cancelled ? "cancelled" : "error", error: msg });
@@ -382,13 +628,15 @@ function cancel(id) {
   return true;
 }
 
-/** 只允许删除版本库自己的目录，且不能是联接 */
+/**
+ * 只删本程序装过的目录，且不能是联接。
+ * 不再按「在安装根目录下」放行：用户完全可以把安装位置指到自己的
+ * E:\develop\Java，那里全是他自己的 JDK，按路径放行就等于给他一把删除自己环境的刀。
+ */
 function uninstall(kind, dir) {
-  const root = path.resolve(runtimeRoot(kind));
   const p = path.resolve(String(dir || ""));
-  const rel = path.relative(root, p);
-  if (!rel || rel.startsWith("..") || path.isAbsolute(rel)) {
-    return { ok: false, err: "只能删除版本库内的目录" };
+  if (!isManaged(kind, p)) {
+    return { ok: false, err: "该目录不是本程序安装的，为安全起见不会删除" };
   }
   let st;
   try {
@@ -398,6 +646,7 @@ function uninstall(kind, dir) {
   }
   if (st.isSymbolicLink()) return { ok: false, err: "这是一个联接，已拒绝删除" };
   if (!rmDir(p)) return { ok: false, err: "删除失败，可能有进程正在使用（请先切换版本并关闭终端）" };
+  unrecord(kind, p);
   return { ok: true };
 }
 
@@ -406,7 +655,7 @@ function uninstall(kind, dir) {
  * 只删超过 1 小时的，避免误删正在进行的解压。
  */
 function cleanStale(kind) {
-  const root = runtimeRoot(kind);
+  const root = rootOf(kind);
   const now = Date.now();
   try {
     for (const n of fs.readdirSync(root)) {
@@ -424,7 +673,8 @@ function cleanStale(kind) {
 }
 
 /** 列出已安装在该类型版本库里的目录 */
-function installed(kind) {  const root = runtimeRoot(kind);
+function installed(kind) {
+  const root = rootOf(kind);
   const out = [];
   let names = [];
   try {
@@ -442,7 +692,15 @@ function installed(kind) {  const root = runtimeRoot(kind);
 }
 
 module.exports = {
+  rootOf,
   runtimeRoot,
+  setRoot,
+  rootIsCustom,
+  defaultRoot,
+  checkRoot,
+  suggestRoot,
+  isManaged,
+  recorded,
   install,
   cancel,
   uninstall,

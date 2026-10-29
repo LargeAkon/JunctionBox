@@ -4,9 +4,11 @@ import {
   S,
   closeStore,
   loadStore,
-  installRuntime,
+  askInstall,
   cancelInstall,
   removeRuntime,
+  changeStoreRoot,
+  resetStoreRoot,
   switchJdk,
   switchNode,
 } from "../store.js";
@@ -17,17 +19,17 @@ const kind = computed({
   set: (v) => (S.store.kind = v),
 });
 
-const items = computed(() => (kind.value === "jdk" ? S.store.jdk : S.store.node));const roots = computed(() => S.store.roots || {});
+const items = computed(() => (kind.value === "jdk" ? S.store.jdk : S.store.node));
+const roots = computed(() => S.store.roots || {});
+const customRoot = computed(() => S.store.customRoot || {});
 const activePath = computed(() =>
   (kind.value === "jdk" ? S.activeJdk.path : S.activeNode.path || "").toLowerCase()
 );
 
 const isActive = (it) => (it.installedPath || "").toLowerCase() === activePath.value;
-const managed = (it) => {
-  const root = (roots.value[kind.value] || "").toLowerCase();
-  const p = (it.installedPath || "").toLowerCase();
-  return !!root && p.startsWith(root + "\\");
-};
+// 只有本程序装的才显示「删除」：安装位置可以指到用户自己的 JDK 目录，
+// 那里的版本是人家自己的环境，不能给一个删除按钮
+const managed = (it) => !!it.managed;
 
 const dl = (it) => S.dl[it.id];
 const running = (it) => {
@@ -61,7 +63,7 @@ const phaseText = (it) => {
 };
 
 function inst(it) {
-  installRuntime({ ...it, kind: kind.value });
+  askInstall({ ...it, kind: kind.value });
 }
 function cancel(it) {
   cancelInstall(it.id);
@@ -72,9 +74,27 @@ function sw(it) {
 function rm(it) {
   removeRuntime({ ...it, kind: kind.value });
 }
+function retry(it) {
+  delete S.dl[it.id];
+  inst(it);
+}
+function pickRoot() {
+  changeStoreRoot(kind.value, roots.value[kind.value]);
+}
+function useDefault() {
+  resetStoreRoot(kind.value);
+}
+
+// 用户目录太长，把家目录换成 ~ 才放得进一行
+function shortPath(p) {
+  if (!p) return "…";
+  const home = S.info?.home || "";
+  if (home && p.toLowerCase().startsWith(home.toLowerCase())) return "~" + p.slice(home.length);
+  return p;
+}
 
 function onKey(e) {
-  if (e.key === "Escape" && S.store.open) closeStore();
+  if (e.key === "Escape" && S.store.open && !S.store.ask) closeStore();
 }
 onMounted(() => window.addEventListener("keydown", onKey));
 onUnmounted(() => window.removeEventListener("keydown", onKey));
@@ -88,7 +108,7 @@ onUnmounted(() => window.removeEventListener("keydown", onKey));
           <header class="phead">
             <div>
               <h2>版本库</h2>
-              <p>选一个大版本，下载后自动解压并切换。不写注册表，不装系统服务。</p>
+              <p>选一个大版本，下载后自动解压并切换。装之前会让你确认装到哪个目录，不写注册表。</p>
             </div>
             <button class="xbtn" title="关闭" @click="closeStore">
               <svg class="icon" viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18"/></svg>
@@ -142,7 +162,7 @@ onUnmounted(() => window.removeEventListener("keydown", onKey));
                 <!-- 失败 -->
                 <div v-else-if="failed(it)" class="fail">
                   <span class="perr" :title="dl(it)?.error">{{ phaseText(it) }}</span>
-                  <button class="btn sm" @click="inst(it)">重试</button>
+                  <button class="btn sm" @click="retry(it)">重试</button>
                 </div>
 
                 <!-- 已安装 -->
@@ -169,10 +189,16 @@ onUnmounted(() => window.removeEventListener("keydown", onKey));
           </div>
 
           <footer class="pfoot">
-            <span class="path">
-              安装到 <b>{{ roots[kind] || "…" }}</b>
-            </span>
-            <span class="grow" />
+            <div class="loc">
+              <svg class="fico" viewBox="0 0 24 24">
+                <path d="M3 7.2A1.2 1.2 0 0 1 4.2 6h5l1.8 2H19.8A1.2 1.2 0 0 1 21 9.2v8.6A1.2 1.2 0 0 1 19.8 19H4.2A1.2 1.2 0 0 1 3 17.8z" />
+              </svg>
+              <span class="lbl">安装到</span>
+              <code class="p" :title="roots[kind]">{{ shortPath(roots[kind]) }}</code>
+              <em v-if="!customRoot[kind]" class="def">默认（C 盘）</em>
+              <button class="lnk" @click="pickRoot">更改</button>
+              <button v-if="customRoot[kind]" class="lnk" @click="useDefault">恢复默认</button>
+            </div>
             <button class="btn" @click="closeStore">关闭</button>
           </footer>
         </div>
@@ -426,21 +452,63 @@ onUnmounted(() => window.removeEventListener("keydown", onKey));
   display: flex;
   align-items: center;
   gap: 12px;
-  padding: 12px 16px 12px 24px;
+  padding: 11px 16px 11px 22px;
   border-top: 1px solid var(--stroke);
   background: var(--layer-3);
 }
-.pfoot .path {
+.pfoot .loc {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: 7px;
   font-size: 11.5px;
   color: var(--text-3);
+}
+.pfoot .fico {
+  flex: none;
+  width: 13px;
+  height: 13px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.6;
+  stroke-linejoin: round;
+  opacity: 0.8;
+}
+.pfoot .lbl {
+  flex: none;
+}
+.pfoot .p {
+  min-width: 0;
+  font-family: var(--font-mono);
+  font-size: 11.5px;
+  color: var(--text-2);
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
-.pfoot .path b {
-  font-family: var(--font-mono);
-  font-weight: 500;
-  color: var(--text-2);
+.pfoot .def {
+  flex: none;
+  padding: 1px 5px;
+  border-radius: 4px;
+  font-size: 10.5px;
+  font-style: normal;
+  color: var(--warning);
+  background: color-mix(in srgb, var(--warning) 12%, transparent);
+}
+.pfoot .lnk {
+  flex: none;
+  padding: 0 2px;
+  font-size: 11.5px;
+  color: var(--accent);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+.pfoot .lnk:hover {
+  color: var(--accent-hover);
+}
+.pfoot .btn {
+  flex: none;
 }
 
 .store-enter-active,

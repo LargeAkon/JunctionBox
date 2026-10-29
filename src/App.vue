@@ -6,6 +6,7 @@ import JdkView from "./views/JdkView.vue";
 import NodeView from "./views/NodeView.vue";
 import AboutView from "./views/AboutView.vue";
 import RuntimeStore from "./components/RuntimeStore.vue";
+import InstallLocationDialog from "./components/InstallLocationDialog.vue";
 
 const navs = [
   { id: "ports", label: "端口检测" },
@@ -129,6 +130,8 @@ function reload() {
 
     <!-- ── 版本库（全局单例，由 JDK / Node 页唤起）── -->
     <RuntimeStore />
+    <!-- ── 安装选址（点「安装」时先问装到哪个目录）── -->
+    <InstallLocationDialog />
   </div>
 </template>
 

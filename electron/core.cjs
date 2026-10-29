@@ -472,7 +472,7 @@ async function findJdks() {
     cands.push(p);
   };
 
-  const roots = [...JDK_ROOTS, installer.runtimeRoot("jdk"), ...loadManual("paths.txt")];
+  const roots = [...JDK_ROOTS, installer.rootOf("jdk"), ...loadManual("paths.txt")];
   for (const root of roots) {
     if (!fs.existsSync(root)) continue;
     add(root);
@@ -860,8 +860,9 @@ async function findNodes() {
 
   for (const r of [...NODE_ROOTS, ...loadManual("node_paths.txt")]) scanParent(r);
 
-  // 版本库自己装的 Node（<runtimes>\node\v22.23.4），子目录直接就是版本
-  const nRoot = installer.runtimeRoot("node");
+  // 版本库的安装位置（可能是用户自己的 E:\develop\node 之类），子目录直接就是版本
+  const nRoot = installer.rootOf("node");
+  scanParent(nRoot);
   try {
     for (const n of fs.readdirSync(nRoot)) {
       if (!n.startsWith(".tmp_")) add(path.join(nRoot, n));
@@ -971,8 +972,8 @@ async function snapshot() {
     javaHome: e2.ju || "",
     nodes,
     activeNode: an,
-    // 版本库目录：界面据此判断某版本是「自己装的」还是「用户原有的」，只有前者能删
-    runtimeRoots: { jdk: installer.runtimeRoot("jdk"), node: installer.runtimeRoot("node") },
+    // 安装位置：界面据此显示「装到哪」，只有本程序装过的目录才允许删除（由主进程判定）
+    runtimeRoots: { jdk: installer.rootOf("jdk"), node: installer.rootOf("node") },
   };
 }
 

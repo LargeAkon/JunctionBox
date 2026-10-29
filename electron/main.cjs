@@ -174,6 +174,32 @@ function createWindow() {
         await new Promise((r) => setTimeout(r, 1600));
         const shot5 = await win.webContents.capturePage();
         fs.writeFileSync(path.join(outDir, "5-store.png"), shot5.toPNG());
+
+        // 安装选址对话框：点第一个未安装版本的「安装」，只截图不确认
+        const clicked = await win.webContents
+          .executeJavaScript(
+            `(() => {
+              const rows = [...document.querySelectorAll('.rows .row')];
+              for (const row of rows) {
+                const b = [...row.querySelectorAll('button')].find((x) => x.innerText.trim() === '安装');
+                if (b) { b.click(); return { ok: true, row: row.innerText.replace(/\\s+/g, ' ').slice(0, 40) }; }
+              }
+              return { ok: false, rows: rows.length };
+            })()`
+          )
+          .catch((e) => ({ err: String(e) }));
+        console.log("[ask]", JSON.stringify(clicked));
+        await new Promise((r) => setTimeout(r, 3200));
+        const askState = await win.webContents
+          .executeJavaScript(`(() => {
+            const a = window.__JDT && window.__JDT.store.ask;
+            if (!a) return "null";
+            return JSON.stringify({ mode: a.mode, label: a.label, suggested: a.suggested && a.suggested.root, count: a.suggested && a.suggested.count, defaultRoot: a.defaultRoot, current: a.current });
+          })()`)
+          .catch((e) => "err " + String(e));
+        console.log("[ask] state", JSON.stringify(askState));
+        const shot6 = await win.webContents.capturePage();
+        fs.writeFileSync(path.join(outDir, "6-location.png"), shot6.toPNG());
         const errs = await win.webContents
           .executeJavaScript("(window.__errs || []).slice(0, 6)")
           .catch(() => []);
@@ -254,6 +280,7 @@ const major = (v) => String(v || "").replace(/^1\./, "").split(/[._]/)[0];
  * 版本库列表 = 内置清单 + 本机已装情况。
  * 匹配按「大版本」算：用户已有 Temurin 17.0.20 时，清单里的 JDK 17 显示为
  * 「已安装 17.0.20」，不会再让人多下 190MB 装一个功能完全一样的 17.0.21。
+ * managed = 这个目录由本程序安装（决定「删除」按钮是否出现，用户自己的 JDK 永不出现）。
  */
 ipcMain.handle("store:list", async () => {
   installer.cleanStale("jdk");
@@ -266,26 +293,96 @@ ipcMain.handle("store:list", async () => {
         ...it,
         installedPath: hit ? hit.path : "",
         installedVer: hit ? hit.ver : "",
+        managed: hit ? installer.isManaged(kind, hit.path) : false,
       };
     });
   return {
     jdk: build("jdk", jdks),
     node: build("node", nodes),
-    roots: { jdk: installer.runtimeRoot("jdk"), node: installer.runtimeRoot("node") },
+    roots: { jdk: installer.rootOf("jdk"), node: installer.rootOf("node") },
+    customRoot: { jdk: installer.rootIsCustom("jdk"), node: installer.rootIsCustom("node") },
+    defaultRoot: { jdk: installer.defaultRoot("jdk"), node: installer.defaultRoot("node") },
   };
+});
+
+/**
+ * 点「安装」前的选址建议。
+ * 从用户机器上已有的 JDK / Node 反推他习惯把版本放在哪，
+ * 例如 JDK 17 在 E:\develop\Java\jdk17 → 建议 JDK 25 装进 E:\develop\Java。
+ */
+ipcMain.handle("store:plan", async (_e, kind) => {
+  const k = kind === "node" ? "node" : "jdk";
+  const dirs = k === "jdk" ? (await core.findJdks()).map((x) => x.path) : (await core.findNodes()).map((x) => x.path);
+  return {
+    kind: k,
+    suggested: installer.suggestRoot(k, dirs),
+    root: installer.rootOf(k),
+    custom: installer.rootIsCustom(k),
+    defaultRoot: installer.defaultRoot(k),
+    found: dirs.length,
+  };
+});
+
+/** 记住安装位置（勾了「以后都装到这里」才调用） */
+ipcMain.handle("store:set-root", async (_e, kind, dir) => {
+  const k = kind === "node" ? "node" : "jdk";
+  if (!dir) {
+    installer.setRoot(k, "");
+    return { ok: true, root: installer.rootOf(k) };
+  }
+  const c = installer.checkRoot(k, dir);
+  if (!c.ok) return c;
+  if (!installer.setRoot(k, c.path)) return { ok: false, err: "写入配置失败，请检查磁盘权限" };
+  // 加进扫描路径：以后即使用户换回别的位置，这个目录里的版本仍然会被列出来
+  const file = k === "jdk" ? "paths.txt" : "node_paths.txt";
+  const list = core.loadManual(file);
+  if (!list.some((x) => path.normalize(x).toLowerCase() === path.normalize(c.path).toLowerCase())) {
+    list.push(path.normalize(c.path));
+    core.saveManual(list, file);
+  }
+  return { ok: true, root: installer.rootOf(k) };
+});
+
+/** 弹出目录选择框，默认停在建议的位置 */
+ipcMain.handle("store:pick-root", async (_e, kind, current) => {
+  const k = kind === "node" ? "node" : "jdk";
+  const start = String(current || "") || installer.rootOf(k);
+  const r = await dialog.showOpenDialog(win, {
+    title: k === "jdk" ? "选择 JDK 的安装位置（版本会装在它下面的子目录里）" : "选择 Node 的安装位置（版本会装在它下面的子目录里）",
+    properties: ["openDirectory", "createDirectory"],
+    defaultPath: fs.existsSync(start) ? start : undefined,
+  });
+  if (r.canceled || !r.filePaths.length) return { ok: false, cancelled: true };
+  return { ok: true, path: path.normalize(r.filePaths[0]) };
 });
 
 // 同一时刻只跑一个安装：并发下载会互相抢带宽，进度也没法看
 let installing = "";
-ipcMain.handle("store:install", async (_e, kind, id) => {
+ipcMain.handle("store:install", async (_e, kind, id, root, remember) => {
   if (installing) return { ok: false, err: "已有版本正在安装，请等它完成" };
-  const item = catalog.find(kind, id);
+  const k = kind === "node" ? "node" : "jdk";
+  const item = catalog.find(k, id);
   if (!item) return { ok: false, err: "清单里没有这个版本" };
+
+  // 安装位置：先校验再动手，避免下载 190MB 之后才发现目录不可写
+  const c = installer.checkRoot(k, root || installer.rootOf(k));
+  if (!c.ok) return { ok: false, err: c.err };
+
+  if (remember) {
+    installer.setRoot(k, c.path);
+  }
+  const file = k === "jdk" ? "paths.txt" : "node_paths.txt";
+  const list = core.loadManual(file);
+  if (!list.some((x) => path.normalize(x).toLowerCase() === path.normalize(c.path).toLowerCase())) {
+    list.push(path.normalize(c.path));
+    core.saveManual(list, file);
+  }
+
   installing = id;
   try {
-    const r = await installer.install(kind, item, (p) => {
+    const r = await installer.install(k, item, (p) => {
       if (win && !win.isDestroyed()) win.webContents.send("install:progress", p);
-    });
+    }, { root: c.path });
     return r;
   } finally {
     installing = "";

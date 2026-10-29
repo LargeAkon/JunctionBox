@@ -44,10 +44,13 @@
 | `jdk:switch` | `core.switchJdk(path)` | 切换 JDK |
 | `node:switch` | `core.switchNode(path)` | 切换 Node |
 | `path:add` / `path:remove` | 内联 | 维护手动登记的扫描目录 |
-| `store:list` | `catalog.list()` + `findJdks/ findNodes` | 版本清单与已装状态 |
-| `store:install` | `installer.install()` | 下载并安装运行时（单飞） |
+| `store:list` | `catalog.list()` + `findJdks/ findNodes` | 版本清单、已装状态与安装位置 |
+| `store:plan` | `installer.suggestRoot()` | 反推用户的安装位置，供选址框使用 |
+| `store:set-root` | `installer.setRoot()` | 记住安装位置（并登记为扫描目录） |
+| `store:pick-root` | 内联 | 目录选择对话框（默认停在建议位置） |
+| `store:install` | `installer.install()` | 下载并安装运行时到指定位置（单飞） |
 | `store:cancel` | `installer.cancel(id)` | 取消进行中的下载 |
-| `store:remove` | `installer.uninstall()` | 删除版本库内的运行时 |
+| `store:remove` | `installer.uninstall()` | 删除本程序装过的运行时 |
 | `install:progress` | 主进程 → 渲染进程 | 下载/解压进度推送 |
 | `dialog:dir` | 内联 | 目录选择对话框 |
 | `shell:open` | 内联 | 打开外部链接 |
@@ -240,16 +243,58 @@ spawn(tar, ["-xf", zip, "-C", dest])
   JDK 读 `release` 里的 `JAVA_VERSION` + `IMPLEMENTOR`（→ `zulu-21.0.13`），
   Node 取目录名（→ `v22.23.4`）。备用源的小版本可能与主源不同，这样才不会对不上。
 - 只有确认 `bin\java.exe` / `node.exe` 存在后才 rename，所以取消或失败不会在列表中留下半个运行时。
-- 删除时用 `path.relative` 校验目标必须落在 `runtimes` 根内、`lstat` 必须不是联接、
-  且不能是当前联接指向的目录。
+- 目标目录重名时先看归属：自己以前装的直接清掉重装；**不是自己装的一律让位**
+  （`zulu-25.0.1-2`），绝不覆盖用户的目录。
+- 删除只认**安装记录**，`lstat` 必须不是联接，且不能是当前联接指向的目录。
 
-### 8.6 与扫描逻辑的衔接
+### 8.6 安装位置：每次先问一句
 
-`installer.runtimeRoot()` 返回 `%LOCALAPPDATA%\JavaDevTool\runtimes\{jdk,node}`，
-`findJdks()` / `findNodes()` 把它加进扫描根。因此版本库装的版本和用户自己装的版本
-在列表里没有区别，都能被 junction 切换。
+默认位置（`%LOCALAPPDATA%\JavaDevTool\runtimes\<kind>`）在 C 盘，但很多人的 JDK 都在
+`E:\develop\Java`。直接把新版本塞进 C 盘，等于把用户的环境拆成两半：重装系统、换盘、
+清理空间时，只有一半找得到。
 
-界面上用路径前缀区分来源：只有以 runtimeRoot 开头的才显示「删除」。
+所以点「安装」不是直接开始下载，而是先弹选址框：
+
+```
+安装 JDK 25 · 先选个位置
+(•) 和现有版本放在一起                    ← 推荐
+    E:\develop\Java
+    检测到 3 个已有版本：jdk、jdk8、jdk7
+( ) 自定义位置   [ E:\develop\Java    ] [选择…]
+[✓] 以后 JDK 都装到这里        [取消] [开始安装]
+```
+
+建议位置由 `installer.suggestRoot(kind, dirs)` 算出，规则很朴素：
+
+1. 取每个已发现运行时的**上级目录**（`E:\develop\Java\jdk` → `E:\develop\Java`）；
+2. 剔除自家版本库目录、AppData 里的、盘符根目录、`Program Files` 这类父目录；
+3. 按命中数量排序，同样多时取更深的那层（`E:\develop\Java` 比 `E:\develop` 更准）；
+4. 逐个试写 `.jbox_probe_*` 判断可写，选第一个可写的。
+
+结果就是：JDK 建议 `E:\develop\Java`，Node 建议 `E:\develop\node\versions`。
+**没有建议时不预填路径**，而是明说默认位置在 C 盘，逼用户先选一个常用目录——
+默认值和「帮用户决定」是两件事。
+
+### 8.7 位置与归属的持久化
+
+| 文件 | 内容 |
+|---|---|
+| `%APPDATA%\JavaDevTool\roots.json` | `{ "jdk": "E:\\develop\\Java", "node": "E:\\develop\\node\\versions" }` |
+| `%APPDATA%\JavaDevTool\installed.json` | `{ "jdk": ["E:\\develop\\Java\\zulu-25.0.1"] }` |
+| `%APPDATA%\JavaDevTool\runtimes.txt` | 旧版的基目录配置，仍兼容 |
+
+只有 `installed.json` 里记着的目录才允许删除。这条不是洁癖：安装位置可以指到用户
+自己的 JDK 目录，那里全是他自己的版本，按「在根目录下」放行就等于给他一把删除
+自己环境的刀。因此「删除」按钮由主进程的 `installer.isManaged()` 决定，
+渲染进程不再通过路径前缀猜测。
+
+### 8.8 与扫描逻辑的衔接
+
+`installer.rootOf(kind)` 返回当前安装位置（用户选的 > 默认），
+`findJdks()` / `findNodes()` 把它加进扫描根；选址时确认过的位置还会写进
+`paths.txt` / `node_paths.txt`，所以即使用户后来把默认位置改回 C 盘，
+装在 `E:\develop\Java` 里的版本仍然会被列出来、仍然能被 junction 切换。
+
 「已安装」按**大版本**匹配，用户已有 Temurin 17.0.20 时，清单里的 JDK 17 直接显示为已安装。
 
 ## 9. 已知限制
