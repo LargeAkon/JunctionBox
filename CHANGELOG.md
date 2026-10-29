@@ -5,6 +5,24 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [3.0.7] - 2026-10-29
+
+Identifier cleanup — no functional change. The binaries are otherwise identical to 3.0.6.
+
+### Changed
+
+- In-app product name unified to `JunctionBox`: title bar, About page, window
+  title, and the `meta:info` payload no longer report the legacy Chinese name.
+- `AppUserModelId` aligned with the installer `appId`
+  (`com.github.largeakon.junctionbox`), so taskbar grouping and notifications
+  carry the product name.
+
+### Notes
+
+- The on-disk data directories keep their historical names
+  (`%LOCALAPPDATA%\JavaDevTool`, `%APPDATA%\JavaDevTool`) on purpose — renaming
+  them would orphan every existing junction and custom scan path.
+
 ## [3.0.6] - 2026-10-29
 
 First public release.

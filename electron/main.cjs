@@ -6,7 +6,7 @@ const fs = require("fs");
 const core = require("./core.cjs");
 
 const isDev = !!process.env.VITE_DEV_SERVER_URL;
-const APP_NAME = "Java开发工具";
+const APP_NAME = "JunctionBox";
 // 直接用 package.json 里的版本，避免和构建产物对不上
 const APP_VERSION = app.getVersion();
 
@@ -280,7 +280,7 @@ if (!gotLock) {
   });
 
   app.whenReady().then(() => {
-    app.setAppUserModelId("com.mogengel.javadevtool");
+    app.setAppUserModelId("com.github.largeakon.junctionbox");
     createWindow();
     nativeTheme.on("updated", () => {
       if (win && !win.isDestroyed()) {

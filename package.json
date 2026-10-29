@@ -1,6 +1,6 @@
 {
   "name": "junctionbox",
-  "version": "3.0.6",
+  "version": "3.0.7",
   "description": "Windows developer toolbox — port inspector and instant JDK/Node version switching via NTFS junctions",
   "main": "electron/main.cjs",
   "author": {
