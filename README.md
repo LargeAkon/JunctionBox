@@ -38,6 +38,29 @@ JunctionBox solves both. Version switching is done by re-pointing an **NTFS dire
 | **Self-healing** | Detects broken links and stale PATH entries on startup and repairs them automatically. |
 | **Native look** | Mica backdrop, Fluent 2 motion, custom title bar, dark theme. |
 
+## Screenshots
+
+<table>
+  <tr>
+    <td width="50%"><img src="docs/screenshots/1-ports.png" alt="Port inspector" /></td>
+    <td width="50%"><img src="docs/screenshots/2-jdk.png" alt="JDK version switcher" /></td>
+  </tr>
+  <tr>
+    <td align="center"><sub><b>Port inspector</b> — every listener with PID, process and full command line</sub></td>
+    <td align="center"><sub><b>JDK switcher</b> — one click, current version marked</sub></td>
+  </tr>
+  <tr>
+    <td width="50%"><img src="docs/screenshots/3-node.png" alt="Node version switcher" /></td>
+    <td width="50%"><img src="docs/screenshots/4-about.png" alt="About and environment" /></td>
+  </tr>
+  <tr>
+    <td align="center"><sub><b>Node switcher</b> — version, architecture and bundled npm</sub></td>
+    <td align="center"><sub><b>Environment</b> — resolved JAVA_HOME, active runtimes, live status bar</sub></td>
+  </tr>
+</table>
+
+> The UI is Simplified Chinese in this release. English is on the [roadmap](#roadmap).
+
 ## Download
 
 Get the latest build from [**Releases**](https://github.com/LargeAkon/JunctionBox/releases).

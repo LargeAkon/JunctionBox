@@ -41,6 +41,27 @@ JunctionBox 把这两件事做成点一下鼠标。其中版本切换用的是 *
 | **启动自愈** | 检测到联接失效、PATH 残留失效项时自动修复 |
 | **界面** | Mica 材质背景、Fluent 2 动效、自绘标题栏、深色主题 |
 
+## 界面截图
+
+<table>
+  <tr>
+    <td width="50%"><img src="docs/screenshots/1-ports.png" alt="端口检测" /></td>
+    <td width="50%"><img src="docs/screenshots/2-jdk.png" alt="JDK 版本切换" /></td>
+  </tr>
+  <tr>
+    <td align="center"><sub><b>端口检测</b> — 监听端口、PID、进程名与完整命令行</sub></td>
+    <td align="center"><sub><b>JDK 切换</b> — 双击即切，当前版本高亮</sub></td>
+  </tr>
+  <tr>
+    <td width="50%"><img src="docs/screenshots/3-node.png" alt="Node 版本切换" /></td>
+    <td width="50%"><img src="docs/screenshots/4-about.png" alt="关于与环境" /></td>
+  </tr>
+  <tr>
+    <td align="center"><sub><b>Node 切换</b> — 版本、架构与内置 npm 版本</sub></td>
+    <td align="center"><sub><b>环境概览</b> — JAVA_HOME 解析结果、当前运行时、状态栏</sub></td>
+  </tr>
+</table>
+
 ## 下载与安装
 
 到 [**Releases**](https://github.com/LargeAkon/JunctionBox/releases) 页面下载最新版本。

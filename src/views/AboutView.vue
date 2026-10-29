@@ -32,7 +32,8 @@ const env = computed(() => [
           <svg viewBox="0 0 16 16"><path d="M7.2 1.6v7.1a1.9 1.9 0 0 1-1.9 1.9 1.9 1.9 0 0 1-1.9-1.9" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/><path d="M11.3 1.4h2.4v6.6a2.3 2.3 0 0 1-4.6 0v-.6" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/><path d="M3 14.2h10" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" opacity=".55"/></svg>
         </div>
         <div>
-          <div class="hname">Java 开发工具</div>
+          <div class="hname">JunctionBox</div>
+          <div class="hsub">Windows 开发环境工具箱 · 端口检测 / JDK / Node 版本切换</div>
         </div>
       </div>
 
@@ -126,6 +127,12 @@ h1 {
   font-family: var(--font-display);
   font-size: 18px;
   font-weight: 600;
+}
+
+.hsub {
+  margin-top: 4px;
+  font-size: 12px;
+  color: var(--text-2);
 }
 
 .ctitle {
