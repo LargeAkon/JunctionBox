@@ -13,6 +13,7 @@ without touching the registry.
 ![Platform](https://img.shields.io/badge/platform-Windows%2010%2F11%20x64-0078D4?logo=windows&logoColor=white)
 ![Tech](https://img.shields.io/badge/Electron-Vue%203-646cff?logo=electron)
 ![License](https://img.shields.io/badge/license-MIT-green)
+[![Build](https://github.com/LargeAkon/JunctionBox/actions/workflows/release.yml/badge.svg)](https://github.com/LargeAkon/JunctionBox/actions/workflows/release.yml)
 
 </div>
 

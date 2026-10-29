@@ -12,6 +12,7 @@ Windows 开发者桌面工具箱：端口占用排查、JDK / Node.js 版本一�
 ![平台](https://img.shields.io/badge/platform-Windows%2010%2F11%20x64-0078D4?logo=windows&logoColor=white)
 ![技术栈](https://img.shields.io/badge/Electron-Vue%203-646cff?logo=electron)
 ![协议](https://img.shields.io/badge/license-MIT-green)
+[![构建](https://github.com/LargeAkon/JunctionBox/actions/workflows/release.yml/badge.svg)](https://github.com/LargeAkon/JunctionBox/actions/workflows/release.yml)
 
 </div>
 
