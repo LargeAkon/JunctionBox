@@ -64,6 +64,10 @@ Path 首项 = %LOCALAPPDATA%\JavaDevTool\links\node
 这两个路径是**目录联接**，指向真实的 JDK / Node 安装目录。
 切换版本 = 删除旧联接 + 指向新目录重建。
 
+> 数据目录沿用历史名称 `JavaDevTool`（`%LOCALAPPDATA%\JavaDevTool`、`%APPDATA%\JavaDevTool`）。
+> 这是**磁盘路径**而非产品名，改名会导致已有用户的环境变量与已配置版本全部失效，
+> 因此产品更名为 JunctionBox 后仍保持原路径不变。
+
 因为 `Path` 和 `JAVA_HOME` 本身没变，所以不需要写注册表、不需要广播
 `WM_SETTINGCHANGE`、不需要等待系统响应。实测 **12~17 ms**。
 
