@@ -4,7 +4,7 @@ export const S = reactive({
   view: "ports",
   booted: false,
   dark: false,
-  mica: false,
+  theme: { mode: "light", dark: false },
   info: null,
 
   ports: [],
@@ -49,6 +49,31 @@ export function toast(text, type = "info") {
   toastTimer = setTimeout(() => (S.toast = { ...S.toast, text: "" }), 2600);
 }
 
+// ---------------------------------------------------------------- 外观
+function applyTheme() {
+  const el = document.documentElement;
+  el.classList.toggle("dark", !!S.dark);
+  el.style.colorScheme = S.dark ? "dark" : "light";
+}
+
+/** light | dark | system */
+export async function setTheme(mode) {
+  try {
+    const r = await window.api.setTheme(mode);
+    if (r && r.ok) {
+      S.theme = { mode: r.mode, dark: !!r.dark };
+      S.dark = !!r.dark;
+      applyTheme();
+    }
+  } catch (e) {
+    toast("切换外观失败：" + errText(e), "error");
+  }
+}
+
+export function toggleTheme() {
+  return setTheme(S.dark ? "light" : "dark");
+}
+
 export async function boot() {
   if (!window.api) {
     toast("预加载桥未注入，请通过桌面程序启动", "error");
@@ -56,14 +81,14 @@ export async function boot() {
   }
   const info = await window.api.info();
   S.info = info;
-  S.dark = info.dark;
-  S.mica = info.mica;
-  document.documentElement.classList.toggle("mica", info.mica);
-  document.documentElement.classList.toggle("dark", info.dark);
+  S.dark = !!info.dark;
+  S.theme = { mode: info.theme || "light", dark: !!info.dark };
+  applyTheme();
 
-  window.api.onTheme(({ dark }) => {
-    S.dark = dark;
-    document.documentElement.classList.toggle("dark", dark);
+  window.api.onTheme(({ dark, mode }) => {
+    S.dark = !!dark;
+    S.theme = { mode: mode || S.theme.mode, dark: !!dark };
+    applyTheme();
   });
 
   window.api.onProgress?.((p) => {
@@ -147,8 +172,8 @@ export async function switchJdk(path) {
     // 首次迁移会改写环境变量，必须重开终端才读得到；之后切换只换联接指向，老终端也立即生效
     toast(
       r.migrated
-        ? "已切换到 Java " + (S.activeJdk.ver || "") + "，环境变量已更新，请重开终端"
-        : "已切换到 Java " + (S.activeJdk.ver || ""),
+        ? "已切换 Java " + (S.activeJdk.ver || "") + " · 请重开终端"
+        : "已切换 Java " + (S.activeJdk.ver || ""),
       "ok"
     );
     refreshEnv(); // 后台校准，不阻塞界面
@@ -172,8 +197,8 @@ export async function switchNode(path) {
     S.activeNode = { ver: hit ? hit.ver : S.activeNode.ver, path, home: S.activeNode.home };
     toast(
       r.migrated
-        ? "已切换到 Node " + (S.activeNode.ver || "") + "，环境变量已更新，请重开终端"
-        : "已切换到 Node " + (S.activeNode.ver || ""),
+        ? "已切换 Node " + (S.activeNode.ver || "") + " · 请重开终端"
+        : "已切换 Node " + (S.activeNode.ver || ""),
       "ok"
     );
     refreshEnv(); // 后台校准，不阻塞界面

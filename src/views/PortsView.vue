@@ -30,12 +30,6 @@ const rows = computed(() => {
   });
 });
 
-function tagOf(r) {
-  if (r.java) return "JAVA";
-  if (r.sys) return "系统";
-  return "";
-}
-
 function ask(r) {
   picked.value = r;
 }
@@ -56,7 +50,6 @@ onMounted(() => {
     <header class="ph">
       <div>
         <h1>端口检测</h1>
-        <p>双击行可结束进程。</p>
       </div>
       <div class="ph-act">
         <button class="btn" :disabled="S.scanning" @click="refreshPorts()">
@@ -69,7 +62,7 @@ onMounted(() => {
     <div class="toolbar">
       <label class="field search">
         <svg class="icon" viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="m16.5 16.5 4 4"/></svg>
-        <input v-model="kw" placeholder="搜索端口 / 进程名 / PID" spellcheck="false" />
+        <input v-model="kw" placeholder="端口 / 进程名 / PID" spellcheck="false" />
         <button v-if="kw" class="clr" title="清空" @click="kw = ''">
           <svg viewBox="0 0 10 10"><path d="M1 1l8 8M9 1L1 9" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"/></svg>
         </button>
@@ -81,13 +74,13 @@ onMounted(() => {
         <button :class="{ on: filter === 'sys' }" @click="filter = 'sys'">系统</button>
       </div>
 
-      <button class="auto" @click="auto = !auto">
-        <span class="switch" :class="{ on: auto }"/>
-        <span>自动刷新</span>
-      </button>
-
       <span class="grow"/>
-      <span class="count">显示 <b>{{ rows.length }}</b> / {{ S.ports.length }}</span>
+
+      <span class="count"><b>{{ rows.length }}</b> / {{ S.ports.length }}</span>
+      <button class="auto" :class="{ on: auto }" @click="auto = !auto">
+        <span class="switch" :class="{ on: auto }"/>
+        自动刷新
+      </button>
     </div>
 
     <div class="card table">
@@ -130,7 +123,8 @@ onMounted(() => {
           <svg viewBox="0 0 24 24" class="eicon"><circle cx="11" cy="11" r="7"/><path d="m16.5 16.5 4 4"/></svg>
           <p v-if="S.portErr">扫描失败：{{ S.portErr }}</p>
           <p v-else-if="S.scanning">正在扫描…</p>
-          <p v-else>没有匹配的端口</p>
+          <p v-else-if="kw || filter !== 'all'">没有匹配的端口</p>
+          <p v-else>没有监听中的端口</p>
         </div>
       </div>
     </div>
@@ -148,88 +142,36 @@ onMounted(() => {
 </template>
 
 <style scoped>
-.page {
-  display: flex;
-  flex-direction: column;
-  height: 100%;
-  min-height: 0;
-  padding: 8px 4px 12px;
-}
-
-.ph {
-  display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
-  gap: 16px;
-  padding: 4px 4px 14px;
-}
-h1 {
-  font-family: var(--font-display);
-  font-size: 25px;
-  line-height: 32px;
-  font-weight: 600;
-  letter-spacing: -0.2px;
-  color: var(--text);
-}
-.ph p {
-  margin-top: 3px;
-  font-size: 12.5px;
-  color: var(--text-2);
-}
-.ph-act {
-  display: flex;
-  gap: 8px;
-  padding-top: 4px;
-}
-.spin {
-  animation: spin 800ms linear infinite;
-}
-@keyframes spin {
-  to { transform: rotate(360deg); }
-}
-
 .toolbar {
   display: flex;
   align-items: center;
   gap: 10px;
-  padding: 0 4px 12px;
+  padding-bottom: 12px;
 }
 .search {
-  width: 250px;
+  width: 248px;
 }
 .clr {
   display: grid;
   place-items: center;
-  width: 18px;
-  height: 18px;
-  border-radius: 9px;
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
   color: var(--text-3);
 }
 .clr svg {
-  width: 9px;
-  height: 9px;
+  width: 8px;
+  height: 8px;
 }
 .clr:hover {
   background: var(--hover);
   color: var(--text);
 }
-.auto {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  font-size: 12.5px;
-  color: var(--text-2);
-  padding: 4px 6px;
-  border-radius: var(--radius-sm);
-}
-.auto:hover {
-  background: var(--hover);
-}
 .grow {
   flex: 1;
 }
 .count {
-  font-size: 12px;
+  font-size: 11.5px;
   color: var(--text-3);
   font-variant-numeric: tabular-nums;
 }
@@ -237,12 +179,34 @@ h1 {
   color: var(--text-2);
   font-weight: 600;
 }
-
-.card {
-  background: var(--layer);
-  border: 1px solid var(--stroke);
-  border-radius: var(--radius-lg);
-  box-shadow: var(--shadow);
+.auto {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  height: 26px;
+  padding: 0 4px 0 2px;
+  font-size: 12px;
+  color: var(--text-3);
+  border-radius: var(--radius-sm);
+}
+.auto:hover {
+  color: var(--text-2);
+}
+.auto.on {
+  color: var(--text);
+}
+.auto .switch {
+  width: 28px;
+  height: 16px;
+}
+.auto .switch::after {
+  width: 10px;
+  height: 10px;
+  margin-top: -5px;
+  left: 2px;
+}
+.auto .switch.on::after {
+  transform: translateX(12px);
 }
 
 .table {
@@ -256,22 +220,25 @@ h1 {
 .thead,
 .row {
   display: grid;
-  grid-template-columns: 68px minmax(110px, 186px) 148px 168px 74px minmax(0, 1fr) 40px;
+  grid-template-columns: 62px minmax(110px, 178px) 140px 162px 66px minmax(0, 1fr) 34px;
   align-items: center;
   gap: 10px;
-  padding: 0 12px 0 14px;
+  padding: 0 10px 0 16px;
 }
 
 .thead {
-  height: 34px;
+  height: 32px;
   flex: none;
-  font-size: 11.5px;
+  font-size: 11px;
   font-weight: 600;
+  letter-spacing: 0.3px;
   color: var(--text-3);
   border-bottom: 1px solid var(--stroke);
-  background: var(--layer-3);
+  background: var(--bg-sunken);
+  padding-right: 22px;
   position: sticky;
   top: 0;
+  border-radius: var(--radius-lg) var(--radius-lg) 0 0;
 }
 .r {
   text-align: right;
@@ -282,34 +249,38 @@ h1 {
   min-height: 0;
   overflow-y: auto;
   overflow-x: hidden;
+  scrollbar-gutter: stable;
 }
 
 .row {
-  height: 36px;
+  height: 34px;
   font-size: 12.5px;
   color: var(--text-2);
-  border-bottom: 1px solid transparent;
+  border-bottom: 1px solid var(--stroke);
   transition: background var(--dur-fast) var(--ease);
+}
+.row:last-child {
+  border-bottom: none;
 }
 .row:hover {
   background: var(--hover);
 }
 .row.java {
-  background: color-mix(in srgb, var(--accent) 5%, transparent);
+  background: color-mix(in srgb, var(--accent) 3.2%, transparent);
 }
 .row.java:hover {
-  background: color-mix(in srgb, var(--accent) 9%, transparent);
+  background: color-mix(in srgb, var(--accent) 7%, transparent);
 }
 .row.sys {
-  background: color-mix(in srgb, var(--danger) 4%, transparent);
+  background: color-mix(in srgb, var(--danger) 2.6%, transparent);
 }
 .row.sys:hover {
-  background: color-mix(in srgb, var(--danger) 8%, transparent);
+  background: color-mix(in srgb, var(--danger) 6%, transparent);
 }
 
 .port {
   font-family: var(--font-mono);
-  font-size: 12.5px;
+  font-size: 12px;
   font-weight: 600;
   color: var(--text);
   font-variant-numeric: tabular-nums;
@@ -322,10 +293,10 @@ h1 {
 }
 .row.java .name {
   color: var(--accent);
-  font-weight: 600;
+  font-weight: 550;
 }
 .row.sys .name {
-  color: var(--danger);
+  color: var(--text-2);
 }
 .tags {
   display: flex;
@@ -339,12 +310,13 @@ h1 {
   text-overflow: ellipsis;
   white-space: nowrap;
   font-family: var(--font-mono);
-  font-size: 11.5px;
+  font-size: 11px;
   color: var(--text-3);
 }
 .pid {
   font-family: var(--font-mono);
-  font-size: 12px;
+  font-size: 11.5px;
+  color: var(--text-2);
   font-variant-numeric: tabular-nums;
 }
 .act {
@@ -352,9 +324,9 @@ h1 {
   justify-content: flex-end;
 }
 .killbtn {
-  width: 24px;
-  height: 24px;
-  border-radius: 5px;
+  width: 22px;
+  height: 22px;
+  border-radius: var(--radius-xs);
   display: grid;
   place-items: center;
   color: var(--text-3);
@@ -363,8 +335,8 @@ h1 {
     color var(--dur-fast) var(--ease);
 }
 .killbtn .icon {
-  width: 12px;
-  height: 12px;
+  width: 11px;
+  height: 11px;
 }
 .row:hover .killbtn {
   opacity: 1;
@@ -379,18 +351,18 @@ h1 {
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 10px;
-  height: 220px;
+  gap: 9px;
+  height: 200px;
   color: var(--text-3);
   font-size: 12.5px;
 }
 .eicon {
-  width: 26px;
-  height: 26px;
+  width: 24px;
+  height: 24px;
   stroke: currentColor;
   fill: none;
   stroke-width: 1.5;
   stroke-linecap: round;
-  opacity: 0.5;
+  opacity: 0.4;
 }
 </style>

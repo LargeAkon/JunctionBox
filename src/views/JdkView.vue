@@ -18,7 +18,6 @@ const cur = computed(() => (S.activeJdk.ver ? "Java " + S.activeJdk.ver : ""));
 <template>
   <VersionPanel
     title="JDK 版本"
-    subtitle="双击即可切换版本。"
     family="JDK"
     :current-ver="cur"
     :current-path="S.activeJdk.path"
@@ -26,7 +25,7 @@ const cur = computed(() => (S.activeJdk.ver ? "Java " + S.activeJdk.ver : ""));
     :note-value="S.javaHome"
     :items="items"
     :busy="S.busy === 'jdk'"
-    empty-text="未检测到 JDK，点击右上角「添加目录」或「版本库」装一个"
+    empty-text="未检测到 JDK"
     @refresh="refreshEnv"
     @add="addPath('jdk')"
     @store="openStore('jdk')"

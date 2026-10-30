@@ -44,3 +44,5 @@ temp/
 
 # Screenshots are tracked, but scratch captures are not
 docs/screenshots/_draft/
+docs/tmp-shot/
+docs/tmp-profile/

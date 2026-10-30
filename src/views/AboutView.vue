@@ -1,9 +1,9 @@
 <script setup>
 import { computed } from "vue";
-import { S } from "../store.js";
+import { S, setTheme } from "../store.js";
 
 const rows = computed(() => [
-  ["应用版本", S.info?.version || "3.0.0"],
+  ["应用版本", S.info?.version || "—"],
   ["Electron", S.info?.electron || "—"],
   ["Chromium", S.info?.chrome || "—"],
   ["Node（内置）", S.info?.node || "—"],
@@ -16,6 +16,18 @@ const env = computed(() => [
   ["当前 Node", S.activeNode.path || "—"],
   ["npm 全局目录", S.info?.npmPrefix || "—"],
 ]);
+
+const modes = [
+  { id: "light", label: "浅色" },
+  { id: "dark", label: "夜间" },
+  { id: "system", label: "跟随系统" },
+];
+
+const theme = computed(() => S.theme.mode || "light");
+
+function open(url) {
+  window.api?.open(url);
+}
 </script>
 
 <template>
@@ -27,14 +39,40 @@ const env = computed(() => [
     </header>
 
     <div class="grid">
+      <!-- 品牌 -->
       <div class="card hero">
         <div class="logo">
           <svg viewBox="0 0 16 16"><path d="M7.2 1.6v7.1a1.9 1.9 0 0 1-1.9 1.9 1.9 1.9 0 0 1-1.9-1.9" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/><path d="M11.3 1.4h2.4v6.6a2.3 2.3 0 0 1-4.6 0v-.6" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/><path d="M3 14.2h10" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" opacity=".55"/></svg>
         </div>
-        <div>
-          <div class="hname">JunctionBox</div>
+        <div class="hmeta">
+          <div class="hname">
+            JunctionBox
+            <em class="chip">{{ S.info?.version ? "v" + S.info.version : "—" }}</em>
+          </div>
           <div class="hsub">Windows 开发环境工具箱 · 端口检测 / JDK / Node 版本切换</div>
         </div>
+        <div class="hlinks">
+          <button class="btn sm" @click="open('https://github.com/LargeAkon/JunctionBox')">GitHub</button>
+          <button
+            class="btn sm"
+            @click="open('https://github.com/LargeAkon/JunctionBox/issues')"
+          >
+            反馈问题
+          </button>
+        </div>
+      </div>
+
+      <!-- 外观：一行放完，不再占掉半屏 -->
+      <div class="card appearance">
+        <div class="ctitle">外观</div>
+        <div class="seg">
+          <button v-for="m in modes" :key="m.id" :class="{ on: theme === m.id }" @click="setTheme(m.id)">
+            {{ m.label }}
+          </button>
+        </div>
+        <p class="hint">
+          {{ S.dark ? "夜间" : "浅色" }}{{ theme === "system" ? " · 跟随系统" : "" }} · 选择会记住
+        </p>
       </div>
 
       <div class="card">
@@ -56,93 +94,102 @@ const env = computed(() => [
           </div>
         </div>
       </div>
-
     </div>
   </section>
 </template>
 
 <style scoped>
 .page {
-  height: 100%;
   overflow-y: auto;
-  padding: 8px 4px 4px;
-}
-.ph {
-  padding: 4px 4px 16px;
-}
-h1 {
-  font-family: var(--font-display);
-  font-size: 25px;
-  line-height: 32px;
-  font-weight: 600;
-  letter-spacing: -0.2px;
-}
-.ph p {
-  margin-top: 3px;
-  font-size: 12.5px;
-  color: var(--text-2);
+  padding-bottom: 8px;
 }
 
 .grid {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
+  display: flex;
+  flex-direction: column;
   gap: 12px;
-  align-items: start;
-  padding: 0 4px 16px;
 }
 .card {
-  background: var(--layer);
-  border: 1px solid var(--stroke);
-  border-radius: var(--radius-lg);
-  box-shadow: var(--shadow-sm);
-  padding: 18px 20px;
+  padding: 16px 18px;
 }
 .hero {
-  grid-column: 1 / -1;
   display: flex;
   align-items: center;
   gap: 14px;
-  padding: 15px 18px;
-  background: linear-gradient(
-    135deg,
-    color-mix(in srgb, var(--accent) 10%, var(--layer)) 0%,
-    var(--layer) 60%
-  );
+  padding: 14px 16px;
+}
+
+/* 外观：标签 + 分段控件 + 说明，挤在一行里 */
+.appearance {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 12px 18px;
+}
+.appearance .ctitle {
+  margin-bottom: 0;
+  flex: none;
+}
+.appearance .seg {
+  flex: none;
+}
+.appearance .hint {
+  margin: 0 0 0 auto;
+  flex: none;
+  font-size: 11.5px;
+  color: var(--text-3);
 }
 .logo {
-  width: 40px;
-  height: 40px;
-  border-radius: 11px;
-  background: linear-gradient(145deg, var(--accent), #2f83ff);
+  width: 38px;
+  height: 38px;
+  flex: none;
+  border-radius: 10px;
+  background: #0056d6;
   color: #fff;
   display: grid;
   place-items: center;
-  box-shadow: 0 4px 12px rgba(0, 90, 234, 0.3);
 }
 .logo svg {
-  width: 22px;
-  height: 22px;
+  width: 21px;
+  height: 21px;
+}
+.hmeta {
+  flex: 1;
+  min-width: 0;
 }
 .hname {
+  display: flex;
+  align-items: center;
+  gap: 8px;
   font-family: var(--font-display);
-  font-size: 18px;
+  font-size: 16px;
   font-weight: 600;
+  letter-spacing: -0.2px;
 }
-
 .hsub {
-  margin-top: 4px;
-  font-size: 12px;
-  color: var(--text-2);
+  margin-top: 2px;
+  font-size: 11.5px;
+  color: var(--text-3);
+}
+.hlinks {
+  display: flex;
+  gap: 6px;
+  flex: none;
 }
 
 .ctitle {
-  font-size: 12px;
+  font-size: 11px;
   font-weight: 600;
   color: var(--text-3);
   text-transform: uppercase;
-  letter-spacing: 0.4px;
+  letter-spacing: 0.5px;
   margin-bottom: 10px;
 }
+.hint {
+  font-size: 11.5px;
+  color: var(--text-3);
+}
+
 .kv {
   display: flex;
   flex-direction: column;
@@ -151,9 +198,9 @@ h1 {
   display: flex;
   justify-content: space-between;
   gap: 16px;
-  padding: 7px 0;
-  font-size: 12.5px;
-  color: var(--text-2);
+  padding: 6px 0;
+  font-size: 12px;
+  color: var(--text-3);
   border-bottom: 1px solid var(--stroke);
 }
 .kvrow:last-child {
@@ -163,8 +210,8 @@ h1 {
   font-weight: 500;
   color: var(--text);
   font-family: var(--font-mono);
-  font-size: 12px;
-  max-width: 62%;
+  font-size: 11.5px;
+  max-width: 66%;
   text-align: right;
   overflow: hidden;
   text-overflow: ellipsis;

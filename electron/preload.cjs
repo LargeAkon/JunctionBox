@@ -25,5 +25,8 @@ contextBridge.exposeInMainWorld("api", {
   toggleMax: () => ipcRenderer.send("win:toggleMax"),
   close: () => ipcRenderer.send("win:close"),
   onWinState: (cb) => ipcRenderer.on("win:state", (_e, d) => cb(d)),
+  getWinState: () => ipcRenderer.invoke("win:state"),
   onTheme: (cb) => ipcRenderer.on("theme:changed", (_e, d) => cb(d)),
+  getTheme: () => ipcRenderer.invoke("theme:get"),
+  setTheme: (mode) => ipcRenderer.invoke("theme:set", mode),
 });

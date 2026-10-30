@@ -217,14 +217,19 @@ async function scanPorts() {
 }
 
 async function killProcess(pid) {
-  const r = await run("taskkill", ["/F", "/T", "/PID", String(pid)], 20000);
+  const n = Number(pid);
+  // 0/4 是 System Idle / System，结束它们只会失败并弹一堆系统错误；
+  // 结束自己也毫无意义（窗口一关进程就没了，还会让「正在刷新」卡住）。
+  if (!Number.isInteger(n) || n <= 4) return { ok: false, err: "这个 PID 不是可以结束的进程" };
+  if (n === process.pid) return { ok: false, err: "不能结束程序自己的进程" };
+  const r = await run("taskkill", ["/F", "/T", "/PID", String(n)], 20000);
   // 用退出码判定，不解析 taskkill 的本地化提示（中文系统下是 GBK，按 utf8 读会乱码）
   // taskkill 约定：0 成功，128 进程不存在，其余多为权限不足
   if (r.code === 0) return { ok: true, err: "" };
   if (r.code === 128) {
-    return { ok: false, err: "进程 " + pid + " 已经不存在了，可能已自行退出" };
+    return { ok: false, err: "进程 " + n + " 已经不存在了，可能已自行退出" };
   }
-  return { ok: false, err: "结束进程 " + pid + " 失败，可能权限不足" };
+  return { ok: false, err: "结束进程 " + n + " 失败，可能权限不足" };
 }
 
 // ---------------------------------------------------------------- 配置持久化
@@ -291,24 +296,73 @@ function dropLink(p) {
   }
 }
 
-/** 重建联接；目标不存在或文件系统不支持 reparse point 时返回 false */
+/**
+ * 重建联接。
+ *
+ * 直接「先删旧的、再建新的」会留下一个空档：宽则几十毫秒里 links\jdk 不存在，
+ * 恰好这段时间有进程启动 java，就会报「找不到 JRE」。虽然很少见，但切换本来
+ * 就是高频操作，概率会累积。
+ *
+ * 改成：先把新联接建在 <link>.new，再删旧的、把 .new 移正。
+ * 断开窗口从「一次建联接」压缩到「一次 rename」，而且 rename 是同一卷上的元数据操作。
+ */
 function makeLink(link, target) {
   try {
     const t = path.resolve(target);
     if (!fs.existsSync(t)) return false;
-    if (!dropLink(link)) return false;
+
+    // 已经指向目标：零操作，避免无谓地重建（也让「切换到当前版本」变成纯 no-op）
+    const cur = linkTarget(link);
+    if (cur && path.normalize(cur).toLowerCase() === path.normalize(t).toLowerCase()) return true;
+
+    const stage = link + ".new";
+    dropLink(stage);
+    fs.symlinkSync(t, stage, "junction");
+    if (!isLink(stage)) return false;
+
+    if (dropLink(link)) {
+      try {
+        fs.renameSync(stage, link);
+        if (isLink(link)) return true;
+      } catch (e) {
+        /* 极少数环境不允许 rename 联接，走下面的兜底 */
+      }
+    }
+    dropLink(stage);
+    dropLink(link);
     fs.symlinkSync(t, link, "junction");
     return isLink(link);
-  } catch (e) { return false; }
+  } catch (e) {
+    return false;
+  }
 }
 
 /**
  * 自愈：环境变量已经指向联接，但联接不见了（被清理工具删掉、手工删除、父目录被清空）。
  * 这时 java/node 会直接"消失"，所以用上次选中的版本自动重建。
- * 只在 JAVA_HOME 确实指向我们的联接时才动手，绝不干预用户自己的配置。
+ *
+ * ⚠️ 只在「环境变量里确实引用了这个联接」时才动手。
+ * 早先 node 这一支是无条件重建的：只要用户切换过一次（留下 last_node.txt），
+ * 下次启动就会在 %LOCALAPPDATA% 里凭空造一个 links\node。联接本身无害，
+ * 但配合 healEnvPath 会把一个从未托管过 node 的用户静默切到旧版本上。
  */
 function healLinks(env) {
   const eq = (a, b) => a && b && path.normalize(a).toLowerCase() === path.normalize(b).toLowerCase();
+  // PATH 里是否出现过某个目录（逐段比较，兼容带引号与 %VAR% 展开前后的写法）
+  const mentions = (raw, target) => {
+    const t = path.normalize(target).toLowerCase();
+    return String(raw || "")
+      .split(";")
+      .map((s) => s.trim().replace(/^"|"$/g, ""))
+      .filter(Boolean)
+      .some((s) => {
+        try {
+          return path.normalize(expandEnv(s, {})).toLowerCase() === t;
+        } catch (e) {
+          return false;
+        }
+      });
+  };
 
   const jl = jdkLink();
   if (eq(env.ju || env.jm, jl) && !isLink(jl)) {
@@ -317,7 +371,7 @@ function healLinks(env) {
   }
 
   const nl = nodeLink();
-  if (!isLink(nl)) {
+  if (!isLink(nl) && (mentions(env.pu, nl) || mentions(env.pm, nl))) {
     const last = loadManual("last_node.txt")[0];
     if (last && fs.existsSync(path.join(last, "node.exe"))) makeLink(nl, last);
   }
@@ -562,6 +616,12 @@ const REG_MACHINE_PATH = "SYSTEM\\CurrentControlSet\\Control\\Session Manager\\E
 const b64 = (s) => Buffer.from(String(s), "utf8").toString("base64");
 
 async function writeEnv(userOps, machineOps) {
+  // 先检查长度：写坏了比写不进去难查得多
+  for (const op of [...userOps, ...machineOps]) {
+    if (op.name !== "Path" || op.value === null) continue;
+    const bad = checkPathSize(op.value);
+    if (bad) return { ok: false, out: bad };
+  }
   const lines = [
     "$ErrorActionPreference='Stop'",
     "function D([string]$b){ [Text.Encoding]::UTF8.GetString([Convert]::FromBase64String($b)) }",
@@ -641,20 +701,38 @@ function broadcastEnv() {
   } catch (e) { /* 广播失败不影响切换本身 */ }
 }
 
-/** 重建 JDK 用的 PATH：去掉所有 JDK 的 bin，把 %JAVA_HOME%\bin 放到首位 */
+/** 重建 JDK 用的 PATH：去掉所有 JDK 的 bin，把 %JAVA_HOME%\bin 放到首位
+ *
+ * 细节：
+ *  - 字面量 `%JAVA_HOME%\bin` 一律先剔除再统一放到首位。否则 JAVA_HOME 为空时
+ *    expandEnv 会把它展开成 `\bin`，既匹配不上 homeBin 也匹配不上 `\bin$` 的盘查，
+ *    结果就是同一项在 PATH 里出现两次。
+ *  - 去重按小写比较，PATH 里重复项多了会把环境块撑爆（Windows 上限 32767 字符）。
+ */
 function rebuildJdkPath(curPath, oldHome, withPrefix) {
   const vars = { JAVA_HOME: oldHome || "" };
   const homeBin = oldHome ? oldHome.replace(/\\+$/, "") + "\\bin" : "";
   const keep = [];
+  const seen = new Set();
+  const push = (v) => {
+    const k = v.trim().toLowerCase();
+    if (!k || seen.has(k)) return;
+    seen.add(k);
+    keep.push(v.trim());
+  };
   for (const raw of String(curPath || "").split(";")) {
     const g = raw.trim();
     if (!g) continue;
+    // 字面量 %JAVA_HOME%\bin 由这里统一处理：用户级会重新加到首位，
+    // 机器级（withPrefix=false）则直接丢弃——机器级 JAVA_HOME 马上要被删掉，
+    // 留着它只会变成一个展开不了的死项。
+    if (/^%JAVA_HOME%\\bin\\?$/i.test(g)) continue;
     const exp = expandEnv(g, vars).replace(/\\+$/, "");
     if (homeBin && exp.toLowerCase() === homeBin.toLowerCase()) continue;
     if (/javapath/i.test(exp)) continue;
     // 只有形如 xxx\bin 的目录才落盘确认，别对每个 PATH 项都碰磁盘
     if (/\\bin$/i.test(exp) && !isUnc(exp) && fs.existsSync(path.join(exp, "java.exe"))) continue;
-    keep.push(g);
+    push(g);
   }
   return withPrefix ? ["%JAVA_HOME%\\bin", ...keep].join(";") : keep.join(";");
 }
@@ -663,6 +741,13 @@ function rebuildJdkPath(curPath, oldHome, withPrefix) {
 function rebuildNodePath(curPath, target) {
   const t = String(target || "").replace(/\\+$/, "");
   const keep = [];
+  const seen = new Set();
+  const push = (v) => {
+    const k = v.trim().toLowerCase();
+    if (!k || seen.has(k)) return;
+    seen.add(k);
+    keep.push(v.trim());
+  };
   for (const raw of String(curPath || "").split(";")) {
     const g = raw.trim();
     if (!g) continue;
@@ -672,9 +757,22 @@ function rebuildNodePath(curPath, target) {
     if (/node/i.test(exp) && !isUnc(exp) &&
         fs.existsSync(path.join(exp, "node.exe")) &&
         fs.existsSync(path.join(exp, "npm.cmd"))) continue;
-    keep.push(g);
+    push(g);
   }
   return t ? [target, ...keep].join(";") : keep.join(";");
+}
+
+/**
+ * 写 PATH 前的最后一道闸：Windows 单个环境变量上限 32767 字符，
+ * 超了以后整块环境会被截断，表现为「有些程序突然找不到」。
+ * 与其写坏，不如明确报错让人先清理 PATH。
+ */
+const PATH_LIMIT = 30000;
+function checkPathSize(v) {
+  const s = String(v || "");
+  if (s.length <= PATH_LIMIT) return null;
+  return `PATH 已经有 ${s.length} 个字符，超过 Windows 上限（${PATH_LIMIT}），` +
+    "请先清理环境变量里用不到的目录再切换";
 }
 
 async function switchJdk(jdk) {
@@ -915,24 +1013,48 @@ async function activeNode() {
  * 环境自检：Path / JAVA_HOME 被外部改坏、或指向已删除的旧版本目录时自动修回来。
  * 只在「确实找不到任何可用的 node / java」时动手，不覆盖用户自己的配置。
  * 这是「npm 突然找不到」这类问题的兜底——打开软件即自愈，不用等下次切换。
+ *
+ * ⚠️ 必须同时看**机器级**和用户级：
+ * 旧实现只扫用户级 PATH。node 用官方安装包装在 C:\Program Files\nodejs 时，
+ * 那条在机器级 PATH 里，用户级当然是空的 —— 于是被判成「没有 node」，
+ * 然后把这个程序自己的 links\node 插到用户级 PATH 首位。用户级优先级高于机器级，
+ * 结果就是「我只是打开了这个工具，node 版本却被换了」。
  */
 async function healEnvPath() {
   const e = await readEnv();
   const segs = String(e.pu || "").split(";").map((s) => s.trim()).filter(Boolean);
   const exp = (s) => path.normalize(expandEnv(s, {})).replace(/\\+$/, "");
+  const has = (dir, file) => {
+    if (!dir) return false;
+    try {
+      return fs.existsSync(path.join(dir, file));
+    } catch (err) {
+      return false;
+    }
+  };
+  const segHas = (raw, file) =>
+    String(raw || "")
+      .split(";")
+      .map((s) => s.trim().replace(/^"|"$/g, ""))
+      .filter(Boolean)
+      .some((s) => has(exp(s), file));
 
-  const hasNode = segs.some((s) => fs.existsSync(path.join(exp(s), "node.exe")));
-  const jhome = String(e.ju || "").trim();
-  const hasJava = !!jhome && fs.existsSync(path.join(jhome, "bin", "java.exe"));
+  const hasNode = segHas(e.pu, "node.exe") || segHas(e.pm, "node.exe");
+  const hasJava =
+    has(e.ju, "bin\\java.exe") || has(e.jm, "bin\\java.exe");
+
+  // 只有用户真在本程序里切过一次，才认为它有授权去修自己的环境
+  const adoptedNode = !!loadManual("last_node.txt")[0];
+  const adoptedJdk = !!loadManual("last_jdk.txt")[0];
 
   const jl = jdkLink();
   const nl = nodeLink();
-  const jLinkOk = fs.existsSync(path.join(jl, "bin", "java.exe"));
-  const nLinkOk = fs.existsSync(path.join(nl, "node.exe"));
+  const jLinkOk = has(jl, "bin\\java.exe");
+  const nLinkOk = has(nl, "node.exe");
 
   const userOps = [];
   let nextSegs = segs.slice();
-  if (!hasNode && nLinkOk) {
+  if (!hasNode && nLinkOk && adoptedNode) {
     // 顺带清掉已经失效的 node 项（目录不存在、名字里带 node），否则每修一次就多一条垃圾
     const alive = segs.filter((s) => {
       const p = exp(s);
@@ -943,7 +1065,7 @@ async function healEnvPath() {
     nextSegs = [nl, ...alive];
     userOps.push({ name: "Path", value: nextSegs.join(";"), kind: "ExpandString" });
   }
-  if (!hasJava && jLinkOk) {
+  if (!hasJava && jLinkOk && adoptedJdk) {
     userOps.push({ name: "JAVA_HOME", value: jl, kind: "String" });
   }
   if (!userOps.length) return false;
@@ -982,5 +1104,7 @@ module.exports = {
   findJdks, jdkInfo, activeJdk, switchJdk,
   findNodes, nodeMeta, npmVersion, activeNode, switchNode,
   snapshot, psExpr, invalidateEnv,
-  jdkLink, nodeLink, isLink, linkTarget, dropLink,
+  jdkLink, nodeLink, isLink, linkTarget, dropLink, makeLink,
+  // 纯函数，导出来给 scripts/selftest.cjs 做回归
+  rebuildJdkPath, rebuildNodePath, checkPathSize,
 };

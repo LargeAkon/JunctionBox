@@ -1,80 +1,114 @@
 /* ============================================================
-   Fluent 2 设计令牌  ·  Windows 11 / 2026 视觉语言
+   JunctionBox 设计令牌
+   ------------------------------------------------------------
+   纯白底 + 细边框 + 一层灰阶，不用渐变、不用毛玻璃、不用发光。
+   结构靠边框和留白，不靠阴影堆叠 —— 这是 2026 年桌面端的主流做法
+   （Linear / Vercel / Raycast 都是同一套：白底、1px 线、紧的字号）。
    ============================================================ */
 :root {
-  /* 字体栈：Windows 11 的可变字体优先，逐级回落 */
   --font-ui: "Segoe UI Variable Text", "Segoe UI", "Microsoft YaHei UI",
-    "Microsoft YaHei", system-ui, sans-serif;
+    "Microsoft YaHei", system-ui, -apple-system, sans-serif;
   --font-display: "Segoe UI Variable Display", "Segoe UI", "Microsoft YaHei UI",
     system-ui, sans-serif;
   --font-mono: "Cascadia Mono", "Consolas", "JetBrains Mono", ui-monospace, monospace;
 
-  /* 动效：Fluent 官方标准曲线 */
-  --ease: cubic-bezier(0.1, 0.9, 0.2, 1);
-  --ease-out: cubic-bezier(0.215, 0.61, 0.355, 1);
-  --dur-fast: 110ms;
-  --dur: 180ms;
-  --dur-slow: 260ms;
+  --ease: cubic-bezier(0.2, 0.8, 0.2, 1);
+  --ease-out: cubic-bezier(0.16, 1, 0.3, 1);
+  --dur-fast: 90ms;
+  --dur: 150ms;
+  --dur-slow: 220ms;
 
+  --radius-xs: 4px;
   --radius-sm: 6px;
   --radius: 8px;
-  --radius-lg: 12px;
-  --radius-xl: 16px;
+  --radius-lg: 10px;
+  --radius-xl: 14px;
 
-  /* 浅色主题 —— 叠加在 Mica 云母之上 */
-  --text: #1a1a1a;
-  --text-2: #5c5c5c;
-  --text-3: #8a8a8a;
-  --layer: rgba(255, 255, 255, 0.72);
-  --layer-2: rgba(255, 255, 255, 0.46);
-  --layer-3: rgba(255, 255, 255, 0.30);
-  --layer-hover: rgba(255, 255, 255, 0.92);
-  --stroke: rgba(0, 0, 0, 0.0578);
-  --stroke-strong: rgba(0, 0, 0, 0.11);
-  --hover: rgba(0, 0, 0, 0.037);
-  --pressed: rgba(0, 0, 0, 0.06);
+  /* ── 浅色（纯白） ── */
+  --bg: #ffffff;            /* 窗口底 / 内容区 */
+  --bg-sub: #fafafa;        /* 侧栏 */
+  --bg-sunken: #f5f5f7;     /* 表头、输入、分段控件槽 */
+  --layer: #ffffff;         /* 卡片 */
+  --layer-2: #fbfbfc;
+  --layer-3: #f5f5f7;
+  --layer-hover: #f4f4f6;
 
-  --accent: #005aea;
-  --accent-hover: #1a6bf0;
-  --accent-press: #004cb8;
-  --accent-soft: rgba(0, 90, 234, 0.09);
-  --accent-stroke: rgba(0, 90, 234, 0.35);
-  --danger: #c42b1c;
-  --danger-soft: rgba(196, 43, 28, 0.10);
-  --success: #0f7b0f;
-  --warning: #8a6100;
+  --text: #101013;
+  --text-2: #5d5d66;
+  --text-3: #8e8e99;
 
-  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.045);
-  --shadow: 0 1px 2px rgba(0, 0, 0, 0.05), 0 4px 14px rgba(0, 0, 0, 0.045);
-  --shadow-lg: 0 8px 28px rgba(0, 0, 0, 0.10), 0 1px 3px rgba(0, 0, 0, 0.06);
+  --stroke: #ececef;
+  --stroke-strong: #dddde2;
+  --hover: rgba(16, 16, 20, 0.045);
+  --pressed: rgba(16, 16, 20, 0.075);
+
+  --accent: #0056d6;
+  --accent-hover: #0060ea;
+  --accent-press: #0048b4;
+  --accent-soft: rgba(0, 86, 214, 0.075);
+  --accent-stroke: rgba(0, 86, 214, 0.28);
+
+  /* 主按钮用"墨色"而不是品牌蓝：白底上更稳，也不跟 Java/Node 的标识色抢 */
+  --ink: #17171b;
+  --ink-hover: #26262c;
+  --ink-press: #000000;
+  --on-ink: #ffffff;
+
+  --danger: #d02b20;
+  --danger-soft: rgba(208, 43, 32, 0.08);
+  --danger-stroke: rgba(208, 43, 32, 0.3);
+  --success: #0d7a4d;
+  --success-soft: rgba(13, 122, 77, 0.09);
+  --warning: #9a6100;
+  --warning-soft: rgba(154, 97, 0, 0.1);
+
+  --shadow-sm: 0 1px 2px rgba(16, 17, 22, 0.05);
+  --shadow: 0 1px 3px rgba(16, 17, 22, 0.06), 0 6px 18px -10px rgba(16, 17, 22, 0.14);
+  --shadow-lg: 0 12px 40px -12px rgba(16, 17, 22, 0.22), 0 2px 8px rgba(16, 17, 22, 0.06);
+  --scrim: rgba(18, 18, 22, 0.34);
 }
 
 html.dark {
-  --text: #f2f2f2;
-  --text-2: #b4b4b4;
-  --text-3: #868686;
-  --layer: rgba(255, 255, 255, 0.062);
-  --layer-2: rgba(255, 255, 255, 0.042);
-  --layer-3: rgba(255, 255, 255, 0.028);
-  --layer-hover: rgba(255, 255, 255, 0.098);
-  --stroke: rgba(255, 255, 255, 0.088);
-  --stroke-strong: rgba(255, 255, 255, 0.16);
-  --hover: rgba(255, 255, 255, 0.058);
-  --pressed: rgba(255, 255, 255, 0.038);
+  --bg: #0b0b0d;
+  --bg-sub: #101013;
+  --bg-sunken: #1c1c22;
+  --layer: #17171b;
+  --layer-2: #1b1b20;
+  --layer-3: #141418;
+  --layer-hover: #232329;
 
-  --accent: #4a92ff;
-  --accent-hover: #63a2ff;
-  --accent-press: #3b7adf;
-  --accent-soft: rgba(74, 146, 255, 0.14);
-  --accent-stroke: rgba(74, 146, 255, 0.42);
-  --danger: #ff99a4;
-  --danger-soft: rgba(255, 153, 164, 0.13);
-  --success: #6ccb5f;
-  --warning: #e3b341;
+  --text: #f4f4f6;
+  --text-2: #a6a6b0;
+  --text-3: #787883;
 
-  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.24);
-  --shadow: 0 1px 2px rgba(0, 0, 0, 0.28), 0 4px 14px rgba(0, 0, 0, 0.22);
-  --shadow-lg: 0 8px 28px rgba(0, 0, 0, 0.48), 0 1px 3px rgba(0, 0, 0, 0.3);
+  --stroke: #292930;
+  --stroke-strong: #3a3a44;
+  --hover: rgba(255, 255, 255, 0.06);
+  --pressed: rgba(255, 255, 255, 0.09);
+
+  --accent: #4d94ff;
+  --accent-hover: #66a3ff;
+  --accent-press: #3d81e6;
+  --accent-soft: rgba(77, 148, 255, 0.14);
+  --accent-stroke: rgba(77, 148, 255, 0.36);
+
+  --ink: #f2f2f5;
+  --ink-hover: #ffffff;
+  --ink-press: #d8d8de;
+  --on-ink: #101014;
+
+  --danger: #ff7a7a;
+  --danger-soft: rgba(255, 122, 122, 0.13);
+  --danger-stroke: rgba(255, 122, 122, 0.36);
+  --success: #46cf8e;
+  --success-soft: rgba(70, 207, 142, 0.13);
+  --warning: #e3ac55;
+  --warning-soft: rgba(227, 172, 85, 0.13);
+
+  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.4);
+  --shadow: 0 1px 3px rgba(0, 0, 0, 0.45), 0 8px 24px -12px rgba(0, 0, 0, 0.6);
+  --shadow-lg: 0 18px 48px -14px rgba(0, 0, 0, 0.75), 0 2px 8px rgba(0, 0, 0, 0.4);
+  --scrim: rgba(0, 0, 0, 0.62);
 }
 
 /* ============================================================ 基线 */
@@ -92,23 +126,15 @@ body,
 }
 
 html {
-  background: transparent; /* 让 Mica 透出 */
-}
-
-/* 不支持 Mica 的环境用纯色兜底 */
-html:not(.mica) {
-  background: #f3f3f3;
-}
-html.dark:not(.mica) {
-  background: #202020;
+  background: var(--bg);
 }
 
 body {
   font-family: var(--font-ui);
-  font-size: 14px;
+  font-size: 13.5px;
   line-height: 20px;
   color: var(--text);
-  background: transparent;
+  background: var(--bg);
   -webkit-font-smoothing: antialiased;
   text-rendering: optimizeLegibility;
   user-select: none;
@@ -134,101 +160,105 @@ button {
   cursor: text;
 }
 
-/* 滚动条 —— Fluent 细条 */
+/* 滚动条：更细、更低调，和纯白底一致 */
 ::-webkit-scrollbar {
-  width: 14px;
-  height: 14px;
+  width: 12px;
+  height: 12px;
 }
 ::-webkit-scrollbar-track {
   background: transparent;
 }
 ::-webkit-scrollbar-thumb {
   background: var(--stroke-strong);
-  border: 5px solid transparent;
+  border: 4px solid transparent;
   background-clip: content-box;
   border-radius: 8px;
 }
 ::-webkit-scrollbar-thumb:hover {
   background: var(--text-3);
-  border: 4px solid transparent;
+  border: 3px solid transparent;
   background-clip: content-box;
 }
 ::-webkit-scrollbar-corner {
   background: transparent;
 }
 
-/* 焦点环 */
 :focus-visible {
-  outline: 2px solid var(--text);
+  outline: 2px solid var(--accent);
   outline-offset: 2px;
-  border-radius: var(--radius-sm);
+  border-radius: var(--radius-xs);
 }
 
-/* ============================================================ 通用控件 */
+/* ============================================================ 按钮 */
 .btn {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  gap: 7px;
-  height: 32px;
-  padding: 0 14px;
+  gap: 6px;
+  height: 30px;
+  padding: 0 12px;
   border-radius: var(--radius-sm);
-  border: 1px solid var(--stroke);
-  background: var(--layer-2);
+  border: 1px solid var(--stroke-strong);
+  background: var(--layer);
   color: var(--text);
-  font-size: 13px;
+  font-size: 12.5px;
   font-weight: 500;
   white-space: nowrap;
   transition: background var(--dur-fast) var(--ease),
-    border-color var(--dur-fast) var(--ease),
-    transform var(--dur-fast) var(--ease);
+    border-color var(--dur-fast) var(--ease), color var(--dur-fast) var(--ease);
 }
 .btn:hover {
   background: var(--layer-hover);
-  border-color: var(--stroke-strong);
 }
 .btn:active {
-  transform: scale(0.982);
   background: var(--pressed);
 }
 .btn:disabled {
-  opacity: 0.42;
+  opacity: 0.4;
   pointer-events: none;
 }
 
 .btn.primary {
-  background: var(--accent);
-  border-color: transparent;
-  color: #fff;
-  box-shadow: 0 1px 3px rgba(0, 90, 234, 0.24);
+  background: var(--ink);
+  border-color: var(--ink);
+  color: var(--on-ink);
+  font-weight: 550;
 }
 .btn.primary:hover {
-  background: var(--accent-hover);
+  background: var(--ink-hover);
+  border-color: var(--ink-hover);
 }
 .btn.primary:active {
-  background: var(--accent-press);
+  background: var(--ink-press);
 }
-html.dark .btn.primary {
-  color: #08121f;
+/* 禁用的主按钮如果只降透明度，在白底上会变成一团发灰的脏色；
+   直接换成浅底 + 次级文字，边界更清楚 */
+.btn.primary:disabled {
+  background: var(--bg-sunken);
+  border-color: transparent;
+  color: var(--text-3);
+  opacity: 1;
+  box-shadow: none;
 }
 
-/* 次级强调：用于「版本库」这类主入口，比普通按钮重、比主按钮轻 */
+/* 次级强调：用于「版本库」这类主入口 */
 .btn.primary-soft {
   color: var(--accent);
   background: var(--accent-soft);
   border-color: var(--accent-stroke);
 }
 .btn.primary-soft:hover {
-  background: color-mix(in srgb, var(--accent) 15%, transparent);
-  border-color: var(--accent-stroke);
+  background: color-mix(in srgb, var(--accent) 13%, transparent);
 }
 
 .btn.ghost {
   background: transparent;
   border-color: transparent;
+  color: var(--text-2);
 }
 .btn.ghost:hover {
   background: var(--hover);
+  color: var(--text);
 }
 
 .btn.danger {
@@ -240,9 +270,20 @@ html.dark .btn.primary {
   background: var(--danger-soft);
 }
 
+.btn.sm {
+  height: 26px;
+  padding: 0 10px;
+  font-size: 12px;
+  border-radius: var(--radius-xs);
+}
+.btn.sm .icon {
+  width: 13px;
+  height: 13px;
+}
+
 .icon {
-  width: 16px;
-  height: 16px;
+  width: 15px;
+  height: 15px;
   flex: none;
   stroke: currentColor;
   fill: none;
@@ -251,24 +292,27 @@ html.dark .btn.primary {
   stroke-linejoin: round;
 }
 
-/* 输入框 */
+/* ============================================================ 输入 */
 .field {
   display: flex;
   align-items: center;
-  gap: 8px;
-  height: 32px;
-  padding: 0 10px;
+  gap: 7px;
+  height: 30px;
+  padding: 0 9px;
   border-radius: var(--radius-sm);
-  border: 1px solid var(--stroke);
-  background: var(--layer-2);
-  color: var(--text-2);
-  transition: border-color var(--dur-fast) var(--ease),
-    background var(--dur-fast) var(--ease);
+  border: 1px solid transparent;
+  background: var(--bg-sunken);
+  color: var(--text-3);
+  transition: border-color var(--dur-fast) var(--ease), background var(--dur-fast) var(--ease),
+    box-shadow var(--dur-fast) var(--ease);
+}
+.field:hover {
+  border-color: var(--stroke-strong);
 }
 .field:focus-within {
-  border-color: var(--accent-stroke);
   background: var(--layer);
-  box-shadow: 0 0 0 1px var(--accent-stroke) inset;
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px var(--accent-soft);
 }
 .field input {
   flex: 1;
@@ -277,91 +321,90 @@ html.dark .btn.primary {
   outline: none;
   background: transparent;
   color: var(--text);
-  font-size: 13px;
+  font-size: 12.5px;
   user-select: text;
 }
 .field input::placeholder {
   color: var(--text-3);
 }
 
-/* 分段控件 */
+/* ============================================================ 分段控件 */
 .seg {
   display: inline-flex;
   padding: 2px;
   gap: 2px;
-  border-radius: var(--radius-sm);
+  border-radius: var(--radius);
+  background: var(--bg-sunken);
   border: 1px solid var(--stroke);
-  background: var(--layer-3);
 }
 .seg button {
-  height: 26px;
-  padding: 0 12px;
-  border-radius: 4px;
-  font-size: 12.5px;
+  height: 24px;
+  padding: 0 11px;
+  border-radius: var(--radius-xs);
+  font-size: 12px;
   color: var(--text-2);
   transition: background var(--dur-fast) var(--ease), color var(--dur-fast) var(--ease);
 }
 .seg button:hover {
-  background: var(--hover);
   color: var(--text);
 }
 .seg button.on {
-  background: var(--layer-hover);
+  background: var(--layer);
   color: var(--text);
+  font-weight: 550;
   box-shadow: var(--shadow-sm);
-  font-weight: 600;
+  outline: 1px solid var(--stroke-strong);
+  outline-offset: -1px;
 }
 
-/* 开关 */
+/* ============================================================ 开关 */
 .switch {
   position: relative;
-  width: 38px;
-  height: 20px;
+  width: 34px;
+  height: 19px;
   border-radius: 10px;
   border: 1px solid var(--stroke-strong);
-  background: var(--layer-3);
+  background: var(--bg-sunken);
   transition: background var(--dur) var(--ease), border-color var(--dur) var(--ease);
 }
 .switch::after {
   content: "";
   position: absolute;
   top: 50%;
-  left: 3px;
-  width: 12px;
-  height: 12px;
-  margin-top: -6px;
+  left: 2px;
+  width: 13px;
+  height: 13px;
+  margin-top: -6.5px;
   border-radius: 50%;
-  background: var(--text-2);
+  background: var(--text-3);
   transition: transform var(--dur) var(--ease), background var(--dur) var(--ease);
 }
 .switch.on {
-  background: var(--accent);
-  border-color: transparent;
+  background: var(--ink);
+  border-color: var(--ink);
 }
 .switch.on::after {
-  transform: translateX(18px);
-  background: #fff;
+  transform: translateX(15px);
+  background: var(--on-ink);
 }
 
-/* 徽标 */
+/* ============================================================ 徽标 */
 .chip {
   display: inline-flex;
   align-items: center;
-  gap: 5px;
-  height: 20px;
-  padding: 0 7px;
-  border-radius: 4px;
-  font-size: 11.5px;
+  gap: 4px;
+  height: 18px;
+  padding: 0 6px;
+  border-radius: var(--radius-xs);
+  font-size: 10.5px;
+  font-style: normal;
   font-weight: 600;
-  letter-spacing: 0.2px;
-  background: var(--hover);
+  letter-spacing: 0.3px;
+  background: var(--bg-sunken);
   color: var(--text-2);
   white-space: nowrap;
 }
-.chip.java {
-  background: var(--accent-soft);
-  color: var(--accent);
-}
+.chip.java,
 .chip.accent {
   background: var(--accent-soft);
   color: var(--accent);
@@ -370,31 +413,85 @@ html.dark .btn.primary {
   background: var(--danger-soft);
   color: var(--danger);
 }
+.chip.ok {
+  background: var(--success-soft);
+  color: var(--success);
+}
 
-/* ============================================================ 页面切换
-   不做整页淡入 —— 半透明渐变会让内容看起来发虚、发脏。
-   改为瞬时切换 + 元素纯位移落位：元素始终保持完全不透明，
-   只从下方 6px 归位，并且错峰 25ms，观感利落且没有空档。 */
+/* ============================================================ 卡片 */
+.card {
+  background: var(--layer);
+  border: 1px solid var(--stroke);
+  border-radius: var(--radius-lg);
+}
+
+/* ============================================================ 页面 */
+.page {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  min-height: 0;
+}
+
+/* 页面头部：标题 + 说明 + 右侧操作 */
+.ph {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 2px 0 16px;
+}
+.ph h1 {
+  font-family: var(--font-display);
+  font-size: 20px;
+  line-height: 26px;
+  font-weight: 600;
+  letter-spacing: -0.3px;
+  color: var(--text);
+}
+.ph p {
+  margin-top: 4px;
+  font-size: 12.5px;
+  color: var(--text-3);
+}
+.ph-act {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  padding-top: 1px;
+}
+
+/* 页面切换：只做位移，不做透明度，避免文字发虚 */
 .page > * {
-  animation: el-rise 180ms var(--ease-out) both;
+  animation: el-rise 160ms var(--ease-out) both;
 }
 .page > *:nth-child(1) { animation-delay: 0ms; }
-.page > *:nth-child(2) { animation-delay: 25ms; }
-.page > *:nth-child(3) { animation-delay: 50ms; }
-.page > *:nth-child(4) { animation-delay: 75ms; }
-.page > *:nth-child(5) { animation-delay: 100ms; }
+.page > *:nth-child(2) { animation-delay: 18ms; }
+.page > *:nth-child(3) { animation-delay: 36ms; }
+.page > *:nth-child(4) { animation-delay: 54ms; }
+.page > *:nth-child(5) { animation-delay: 72ms; }
 
 @keyframes el-rise {
-  from { transform: translateY(6px); }
+  from { transform: translateY(5px); }
   to { transform: none; }
 }
-
-/* 通用淡入 */
 @keyframes fade-in {
   from { opacity: 0; }
   to { opacity: 1; }
 }
-@keyframes rise {
-  from { opacity: 0; transform: translateY(6px); }
-  to { opacity: 1; transform: translateY(0); }
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+.spin {
+  animation: spin 800ms linear infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
 }

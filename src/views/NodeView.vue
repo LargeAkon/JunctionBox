@@ -19,7 +19,6 @@ const npmPrefix = computed(() => S.info?.npmPrefix || "");
 <template>
   <VersionPanel
     title="Node 版本"
-    subtitle="双击即可切换版本。"
     family="Node"
     :current-ver="cur"
     :current-path="S.activeNode.path"
@@ -27,7 +26,7 @@ const npmPrefix = computed(() => S.info?.npmPrefix || "");
     :note-value="npmPrefix"
     :items="items"
     :busy="S.busy === 'node'"
-    empty-text="未检测到 Node，点击右上角「添加目录」或「版本库」装一个"
+    empty-text="未检测到 Node"
     @refresh="refreshEnv"
     @add="addPath('node')"
     @store="openStore('node')"

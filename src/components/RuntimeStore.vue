@@ -32,6 +32,9 @@ const isActive = (it) => (it.installedPath || "").toLowerCase() === activePath.v
 // 那里的版本是人家自己的环境，不能给一个删除按钮
 const managed = (it) => !!it.managed;
 
+// 默认位置不一定在 C 盘（兼容老的 runtimes.txt 配置），文案不能写死
+const defaultOnC = computed(() => /^[a-c]:/i.test(String((S.store.defaultRoot || {})[kind.value] || "")));
+
 const dl = (it) => S.dl[it.id];
 const running = (it) => {
   const d = dl(it);
@@ -119,27 +122,25 @@ onUnmounted(() => window.removeEventListener("keydown", onKey));
   <Teleport to="body">
     <Transition name="store">
       <div v-if="S.store.open" class="scrim" @click.self="closeStore">
-        <div class="panel" role="dialog">
+        <div class="panel" role="dialog" aria-modal="true" aria-label="版本库">
           <header class="phead">
             <div>
               <h2>版本库</h2>
-              <p>选一个大版本，下载后自动解压并切换。装之前会让你确认装到哪个目录，不写注册表。</p>
+              <p>下载后自动解压并切换，不写注册表。</p>
             </div>
             <button class="xbtn" title="关闭" @click="closeStore">
               <svg class="icon" viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18"/></svg>
             </button>
           </header>
 
-          <div class="seg">
-            <button :class="{ on: kind === 'jdk' }" @click="kind = 'jdk'">
-              JDK <span class="n">{{ S.store.jdk.length }}</span>
-            </button>
-            <button :class="{ on: kind === 'node' }" @click="kind = 'node'">
-              Node <span class="n">{{ S.store.node.length }}</span>
-            </button>
+          <div class="bar">
+            <div class="seg">
+              <button :class="{ on: kind === 'jdk' }" @click="kind = 'jdk'">JDK</button>
+              <button :class="{ on: kind === 'node' }" @click="kind = 'node'">Node</button>
+            </div>
             <span class="grow" />
             <button class="btn ghost sm" :disabled="S.store.loading" @click="loadStore">
-              <svg class="icon" viewBox="0 0 24 24"><path d="M20 11a8 8 0 1 0-1.9 5.2"/><path d="M20 5v6h-6"/></svg>
+              <svg class="icon" viewBox="0 0 24 24" :class="{ spin: S.store.loading }"><path d="M20 11a8 8 0 1 0-1.9 5.2"/><path d="M20 5v6h-6"/></svg>
               刷新
             </button>
           </div>
@@ -154,10 +155,14 @@ onUnmounted(() => window.removeEventListener("keydown", onKey));
                 </div>
                 <div class="l2">
                   <span>{{ it.vendor }} {{ it.installedVer || it.ver }}</span>
-                  <span v-if="!it.installedPath && it.sizeMb" class="dot">·</span>
-                  <span v-if="!it.installedPath && it.sizeMb" class="sz">下载约 {{ it.sizeMb }} MB</span>
-                  <span v-if="it.installedPath && managed(it)" class="dot">·</span>
-                  <span v-if="it.installedPath && managed(it)" class="sz">版本库内</span>
+                  <template v-if="!it.installedPath && it.sizeMb">
+                    <span class="dot">·</span>
+                    <span class="sz">下载约 {{ it.sizeMb }} MB</span>
+                  </template>
+                  <template v-if="it.installedPath && managed(it)">
+                    <span class="dot">·</span>
+                    <span class="sz">版本库内</span>
+                  </template>
                 </div>
               </div>
 
@@ -210,7 +215,7 @@ onUnmounted(() => window.removeEventListener("keydown", onKey));
               </svg>
               <span class="lbl">安装到</span>
               <code class="p" :title="roots[kind]">{{ shortPath(roots[kind]) }}</code>
-              <em v-if="!customRoot[kind]" class="def">默认（C 盘）</em>
+              <em v-if="!customRoot[kind]" class="def">{{ defaultOnC ? "默认（C 盘）" : "默认" }}</em>
               <button class="lnk" @click="pickRoot">更改</button>
               <button v-if="customRoot[kind]" class="lnk" @click="useDefault">恢复默认</button>
             </div>
@@ -225,8 +230,7 @@ onUnmounted(() => window.removeEventListener("keydown", onKey));
       :open="!!pending"
       title="删除这个版本？"
       :message="
-        pendingName +
-        ' 会从版本库里彻底删除，不进回收站，也无法恢复。需要时可以在版本库重新下载安装。'
+        pendingName + ' 会被彻底删除，不进回收站，无法恢复。'
       "
       ok-text="删除"
       danger
@@ -244,21 +248,20 @@ onUnmounted(() => window.removeEventListener("keydown", onKey));
   display: grid;
   place-items: center;
   padding: 28px;
-  background: rgba(0, 0, 0, 0.26);
-  backdrop-filter: blur(4px);
+  background: var(--scrim);
+  backdrop-filter: blur(2px);
 }
 
 .panel {
   display: flex;
   flex-direction: column;
-  width: 720px;
+  width: 700px;
   max-width: 100%;
-  max-height: min(720px, calc(100vh - 56px));
+  max-height: min(700px, calc(100vh - 56px));
   border-radius: var(--radius-xl);
-  background: var(--layer-hover);
+  background: var(--bg);
   border: 1px solid var(--stroke-strong);
   box-shadow: var(--shadow-lg);
-  backdrop-filter: blur(40px) saturate(1.5);
   overflow: hidden;
 }
 
@@ -266,25 +269,25 @@ onUnmounted(() => window.removeEventListener("keydown", onKey));
   display: flex;
   align-items: flex-start;
   gap: 16px;
-  padding: 20px 20px 14px 24px;
+  padding: 18px 18px 12px 20px;
 }
 .phead h2 {
   font-family: var(--font-display);
-  font-size: 19px;
+  font-size: 17px;
   font-weight: 600;
-  color: var(--text);
   letter-spacing: -0.2px;
+  color: var(--text);
 }
 .phead p {
-  margin-top: 4px;
-  font-size: 12.5px;
+  margin-top: 3px;
+  font-size: 12px;
   line-height: 18px;
-  color: var(--text-2);
+  color: var(--text-3);
 }
 .xbtn {
   flex: none;
-  width: 30px;
-  height: 30px;
+  width: 28px;
+  height: 28px;
   margin-left: auto;
   display: grid;
   place-items: center;
@@ -296,36 +299,12 @@ onUnmounted(() => window.removeEventListener("keydown", onKey));
   color: var(--text);
 }
 
-.seg {
+.bar {
   display: flex;
   align-items: center;
-  gap: 6px;
-  padding: 0 20px 12px 24px;
-}
-.seg > button:not(.btn) {
-  height: 28px;
-  padding: 0 12px;
-  border-radius: 14px;
-  font-size: 12.5px;
-  font-weight: 500;
-  color: var(--text-2);
-  border: 1px solid transparent;
-  transition: background var(--dur-fast) var(--ease), color var(--dur-fast) var(--ease);
-}
-.seg > button:not(.btn):hover {
-  background: var(--hover);
-  color: var(--text);
-}
-.seg > button.on {
-  background: var(--accent-soft);
-  border-color: var(--accent-stroke);
-  color: var(--accent);
-}
-.seg .n {
-  margin-left: 5px;
-  font-size: 11px;
-  opacity: 0.65;
-  font-variant-numeric: tabular-nums;
+  gap: 8px;
+  padding: 0 18px 12px 20px;
+  border-bottom: 1px solid var(--stroke);
 }
 .grow {
   flex: 1;
@@ -338,26 +317,27 @@ onUnmounted(() => window.removeEventListener("keydown", onKey));
   display: flex;
   flex-direction: column;
   gap: 6px;
-  padding: 0 16px 12px;
+  padding: 12px 14px;
 }
 
 .row {
   display: flex;
   align-items: center;
-  gap: 16px;
-  padding: 13px 16px;
+  gap: 14px;
+  padding: 11px 13px;
   border-radius: var(--radius);
   border: 1px solid var(--stroke);
-  background: var(--layer-2);
+  background: var(--layer);
   transition: background var(--dur-fast) var(--ease), border-color var(--dur-fast) var(--ease);
 }
 .row:hover {
-  background: var(--layer);
+  background: var(--layer-hover);
   border-color: var(--stroke-strong);
 }
 .row.act {
-  border-color: var(--accent-stroke);
-  background: color-mix(in srgb, var(--accent) 5%, var(--layer-2));
+  border-color: var(--ink);
+  background: var(--layer);
+  box-shadow: var(--shadow-sm);
 }
 
 .vcol {
@@ -367,23 +347,25 @@ onUnmounted(() => window.removeEventListener("keydown", onKey));
 .l1 {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 7px;
 }
 .l1 b {
   font-family: var(--font-display);
-  font-size: 15px;
+  font-size: 13.5px;
   font-weight: 600;
   color: var(--text);
 }
 .tag {
-  padding: 1px 6px;
-  border-radius: 4px;
-  font-size: 10.5px;
+  padding: 0 5px;
+  height: 17px;
+  line-height: 17px;
+  border-radius: var(--radius-xs);
+  font-size: 10px;
   font-style: normal;
   font-weight: 600;
-  letter-spacing: 0.2px;
-  color: var(--text-2);
-  background: var(--hover);
+  letter-spacing: 0.3px;
+  color: var(--text-3);
+  background: var(--bg-sunken);
 }
 .tag.lts {
   color: var(--accent);
@@ -391,11 +373,11 @@ onUnmounted(() => window.removeEventListener("keydown", onKey));
 }
 .tag.now {
   color: var(--success);
-  background: color-mix(in srgb, var(--success) 12%, transparent);
+  background: var(--success-soft);
 }
 .l2 {
-  margin-top: 3px;
-  font-size: 12px;
+  margin-top: 2px;
+  font-size: 11.5px;
   color: var(--text-3);
   font-variant-numeric: tabular-nums;
 }
@@ -403,40 +385,28 @@ onUnmounted(() => window.removeEventListener("keydown", onKey));
   margin: 0 5px;
   opacity: 0.5;
 }
-.sz {
-  font-variant-numeric: tabular-nums;
-}
 
 .acol {
   flex: none;
   display: flex;
   align-items: center;
-  gap: 6px;
-  min-width: 96px;
+  gap: 5px;
+  min-width: 92px;
   justify-content: flex-end;
-}
-.btn.sm {
-  height: 28px;
-  padding: 0 11px;
-  font-size: 12.5px;
-}
-.btn.sm .icon {
-  width: 14px;
-  height: 14px;
 }
 
 /* 进度 */
 .prog {
   display: flex;
   align-items: center;
-  gap: 10px;
-  width: 258px;
+  gap: 9px;
+  width: 250px;
 }
 .pbar {
   flex: 1;
-  height: 4px;
+  height: 3px;
   border-radius: 2px;
-  background: var(--hover);
+  background: var(--bg-sunken);
   overflow: hidden;
 }
 .pbar i {
@@ -447,8 +417,8 @@ onUnmounted(() => window.removeEventListener("keydown", onKey));
   transition: width 160ms linear;
 }
 .pinfo {
-  font-size: 11.5px;
-  color: var(--text-2);
+  font-size: 11px;
+  color: var(--text-3);
   font-variant-numeric: tabular-nums;
   white-space: nowrap;
 }
@@ -459,11 +429,11 @@ onUnmounted(() => window.removeEventListener("keydown", onKey));
 .fail {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 7px;
 }
 .perr {
-  max-width: 170px;
-  font-size: 11.5px;
+  max-width: 160px;
+  font-size: 11px;
   color: var(--danger);
   overflow: hidden;
   text-overflow: ellipsis;
@@ -471,7 +441,7 @@ onUnmounted(() => window.removeEventListener("keydown", onKey));
 }
 
 .empty {
-  padding: 40px;
+  padding: 36px;
   text-align: center;
   font-size: 12.5px;
   color: var(--text-3);
@@ -481,17 +451,17 @@ onUnmounted(() => window.removeEventListener("keydown", onKey));
   display: flex;
   align-items: center;
   gap: 12px;
-  padding: 11px 16px 11px 22px;
+  padding: 10px 14px 10px 20px;
   border-top: 1px solid var(--stroke);
-  background: var(--layer-3);
+  background: var(--bg-sub);
 }
 .pfoot .loc {
   flex: 1;
   min-width: 0;
   display: flex;
   align-items: center;
-  gap: 7px;
-  font-size: 11.5px;
+  gap: 6px;
+  font-size: 11px;
   color: var(--text-3);
 }
 .pfoot .fico {
@@ -510,7 +480,7 @@ onUnmounted(() => window.removeEventListener("keydown", onKey));
 .pfoot .p {
   min-width: 0;
   font-family: var(--font-mono);
-  font-size: 11.5px;
+  font-size: 11px;
   color: var(--text-2);
   overflow: hidden;
   text-overflow: ellipsis;
@@ -518,17 +488,17 @@ onUnmounted(() => window.removeEventListener("keydown", onKey));
 }
 .pfoot .def {
   flex: none;
-  padding: 1px 5px;
-  border-radius: 4px;
-  font-size: 10.5px;
+  padding: 0 5px;
+  border-radius: var(--radius-xs);
+  font-size: 10px;
   font-style: normal;
   color: var(--warning);
-  background: color-mix(in srgb, var(--warning) 12%, transparent);
+  background: var(--warning-soft);
 }
 .pfoot .lnk {
   flex: none;
   padding: 0 2px;
-  font-size: 11.5px;
+  font-size: 11px;
   color: var(--accent);
   text-decoration: underline;
   text-underline-offset: 2px;
@@ -542,11 +512,11 @@ onUnmounted(() => window.removeEventListener("keydown", onKey));
 
 .store-enter-active,
 .store-leave-active {
-  transition: opacity 150ms var(--ease);
+  transition: opacity 130ms var(--ease);
 }
 .store-enter-active .panel,
 .store-leave-active .panel {
-  transition: transform 220ms var(--ease-out), opacity 150ms var(--ease);
+  transition: transform 200ms var(--ease-out), opacity 130ms var(--ease);
 }
 .store-enter-from,
 .store-leave-to {
@@ -555,6 +525,6 @@ onUnmounted(() => window.removeEventListener("keydown", onKey));
 .store-enter-from .panel,
 .store-leave-to .panel {
   opacity: 0;
-  transform: scale(0.98) translateY(6px);
+  transform: scale(0.985) translateY(6px);
 }
 </style>

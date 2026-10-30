@@ -1,5 +1,5 @@
 "use strict";
-const { app, BrowserWindow, ipcMain, nativeTheme, dialog, shell } = require("electron");
+const { app, BrowserWindow, ipcMain, nativeTheme, dialog, shell, session } = require("electron");
 const path = require("path");
 const os = require("os");
 const fs = require("fs");
@@ -12,14 +12,53 @@ const APP_NAME = "JunctionBox";
 // 直接用 package.json 里的版本，避免和构建产物对不上
 const APP_VERSION = app.getVersion();
 
-/** Windows 11 22000+ 才支持 Mica 云母材质 */
-function supportsMica() {
+// ---------------------------------------------------------------- 设置
+// 只存主题偏好这类单值设置，放 %APPDATA%\JavaDevTool\settings.json
+function settingsFile() {
+  return path.join(
+    process.env.APPDATA || path.join(os.homedir(), "AppData", "Roaming"),
+    "JavaDevTool",
+    "settings.json"
+  );
+}
+
+function readSettings() {
   try {
-    const build = parseInt(String(os.release()).split(".")[2] || "0", 10);
-    return build >= 22000;
+    const v = JSON.parse(fs.readFileSync(settingsFile(), "utf8"));
+    return v && typeof v === "object" ? v : {};
+  } catch (e) {
+    return {};
+  }
+}
+
+function writeSettings(patch) {
+  try {
+    fs.mkdirSync(path.dirname(settingsFile()), { recursive: true });
+    const next = { ...readSettings(), ...patch };
+    fs.writeFileSync(settingsFile(), JSON.stringify(next, null, 2), "utf8");
+    return true;
   } catch (e) {
     return false;
   }
+}
+
+const THEME_MODES = ["light", "dark", "system"];
+function themeMode() {
+  const m = String(readSettings().theme || "light");
+  return THEME_MODES.includes(m) ? m : "light";
+}
+/** 窗口底色：纯白 / 近黑，避免深色模式下启动闪一下白屏 */
+const surface = (dark) => (dark ? "#0d0d10" : "#ffffff");
+
+function syncWindowChrome() {
+  if (!win || win.isDestroyed()) return;
+  const dark = nativeTheme.shouldUseDarkColors;
+  try {
+    win.setBackgroundColor(surface(dark));
+  } catch (e) {
+    /* ignore */
+  }
+  win.webContents.send("theme:changed", { dark, mode: themeMode() });
 }
 
 let win = null;
@@ -70,19 +109,17 @@ function markHealthy() {
 }
 
 function createWindow() {
-  const mica = supportsMica();
-
   win = new BrowserWindow({
     width: 1280,
-    height: 840,
+    height: 830,
     minWidth: 1000,
     minHeight: 640,
     show: false,                       // 先不显示，等渲染完再 show，避免白屏闪烁
     frame: false,                      // 自绘标题栏
-    backgroundColor: mica ? "#00000000" : (nativeTheme.shouldUseDarkColors ? "#202020" : "#f3f3f3"),
-    ...(mica ? { backgroundMaterial: "mica", visualEffectState: "followWindow" } : {}),
+    backgroundColor: surface(nativeTheme.shouldUseDarkColors),
     roundedCorners: true,
     autoHideMenuBar: true,
+    title: APP_NAME,
     webPreferences: {
       preload: path.join(__dirname, "preload.cjs"),
       contextIsolation: true,
@@ -96,8 +133,7 @@ function createWindow() {
   win.setMenuBarVisibility(false);
 
   // 调试模式：把渲染进程的日志与加载失败转发到主进程输出
-  if (process.env.JDT_DEBUG) {
-    win.webContents.on("console-message", (...a) => {
+  if (process.env.JDT_DEBUG) {    win.webContents.on("console-message", (...a) => {
       const d = a[1];
       if (d && typeof d === "object" && "message" in d) {
         console.log(`[renderer:${d.level}] ${d.message}`);
@@ -111,6 +147,21 @@ function createWindow() {
     win.webContents.on("render-process-gone", (_e, d) =>
       console.error("[render-process-gone]", JSON.stringify(d))
     );
+  }
+
+  // 临时求值：JDT_EVAL="<js 表达式>" 时在页面里跑一次并打印结果，用于核对真实 DOM。
+  // 和截图模式一样只在开发时用，正常启动完全不受影响。
+  if (process.env.JDT_EVAL && !process.env.JDT_SHOT) {
+    win.webContents.once("did-finish-load", async () => {
+      await new Promise((r) => setTimeout(r, 2500));
+      try {
+        const v = await win.webContents.executeJavaScript(process.env.JDT_EVAL);
+        console.log("[eval]", typeof v === "string" ? v : JSON.stringify(v));
+      } catch (e) {
+        console.error("[eval] failed", e);
+      }
+      app.exit(0);
+    });
   }
 
   // 截图模式：JDT_SHOT=<目录> 时依次截取各页签后退出，用于视觉验收
@@ -156,6 +207,23 @@ function createWindow() {
           const img = await win.webContents.capturePage();
           fs.writeFileSync(path.join(outDir, `${i + 1}-${shots[i]}.png`), img.toPNG());
         }
+
+        // 夜间模式：点右上角外观按钮，截一张端口页，再切回浅色
+        const themed = await win.webContents
+          .executeJavaScript(
+            `(() => { const bs=[...document.querySelectorAll('.navitem')]; bs[0]?.click(); const b=document.querySelector('.tbtn'); if(b) b.click(); return !!b; })()`
+          )
+          .catch(() => false);
+        console.log("[theme]", JSON.stringify(themed));
+        await new Promise((r) => setTimeout(r, 900));
+        fs.writeFileSync(
+          path.join(outDir, "5-dark.png"),
+          (await win.webContents.capturePage()).toPNG()
+        );
+        await win.webContents
+          .executeJavaScript(`document.querySelector('.tbtn')?.click(); true;`)
+          .catch(() => {});
+        await new Promise((r) => setTimeout(r, 400));
 
         // 版本库面板：切到 JDK 页 → 点「版本库」→ 截图
         await win.webContents.executeJavaScript(
@@ -221,7 +289,6 @@ function createWindow() {
   win.once("ready-to-show", () => {
     win.show();
     markHealthy();
-    win.webContents.send("win:state", { maximized: win.isMaximized() });
   });
 
   const pushState = () => {
@@ -229,11 +296,28 @@ function createWindow() {
   };
   win.on("maximize", pushState);
   win.on("unmaximize", pushState);
+  win.webContents.on("did-finish-load", pushState);
 
+  // ---------------------------------------------------------------- 安全边界
+  // 应用里没有任何需要外链的能力，所以只放行 http(s)，其余协议一律不交给系统。
+  // 以前是「收到什么就 openExternal 什么」，等于把 file://、ms-settings:、
+  // 甚至自定义协议的处理权交给了页面内容。
   win.webContents.setWindowOpenHandler(({ url }) => {
-    shell.openExternal(url);
+    if (/^https?:\/\//i.test(url)) shell.openExternal(url);
     return { action: "deny" };
   });
+
+  // 页面本身不允许被导航走：拖进一个 HTML 文件、或将来某处渲染了链接，
+  // 都不该让渲染进程离开本地页面（preload 暴露的 API 还在上下文里）。
+  win.webContents.on("will-navigate", (e, url) => {
+    const dev = process.env.VITE_DEV_SERVER_URL || "";
+    if (url === win.webContents.getURL()) return;
+    if (dev && url.startsWith(dev)) return;
+    e.preventDefault();
+    if (/^https?:\/\//i.test(url)) shell.openExternal(url);
+  });
+
+  win.webContents.on("will-attach-webview", (e) => e.preventDefault());
 }
 
 // ---------------------------------------------------------------- IPC
@@ -243,13 +327,25 @@ ipcMain.handle("meta:info", () => ({
   electron: process.versions.electron,
   chrome: process.versions.chrome,
   node: process.versions.node,
-  mica: supportsMica() && !softMode,
   soft: softMode,
   dark: nativeTheme.shouldUseDarkColors,
+  theme: themeMode(),
   os: `${os.type()} ${os.release()}`,
   home: os.homedir(),
   npmPrefix: path.join(os.homedir(), "AppData", "Roaming", "npm"),
+  settingsPath: settingsFile(),
 }));
+
+// ---------------------------------------------------------------- 外观
+ipcMain.handle("theme:get", () => ({ mode: themeMode(), dark: nativeTheme.shouldUseDarkColors }));
+
+ipcMain.handle("theme:set", (_e, mode) => {
+  const m = THEME_MODES.includes(String(mode)) ? String(mode) : "light";
+  writeSettings({ theme: m });
+  nativeTheme.themeSource = m;
+  syncWindowChrome();
+  return { ok: true, mode: m, dark: nativeTheme.shouldUseDarkColors };
+});
 
 ipcMain.handle("ports:scan", () => core.scanPorts());
 ipcMain.handle("ports:kill", (_e, pid) => core.killProcess(pid));
@@ -392,18 +488,25 @@ ipcMain.handle("store:install", async (_e, kind, id, root, remember) => {
 ipcMain.handle("store:cancel", (_e, id) => ({ ok: installer.cancel(id) }));
 
 ipcMain.handle("store:remove", (_e, kind, dir) => {
-  const link = kind === "jdk" ? core.jdkLink() : core.nodeLink();
+  const k = kind === "node" ? "node" : "jdk";
+  if (typeof dir !== "string" || !path.isAbsolute(dir)) {
+    return { ok: false, err: "路径无效" };
+  }
+  const link = k === "jdk" ? core.jdkLink() : core.nodeLink();
   const active = core.linkTarget(link);
   const same = (a, b) => a && b && path.normalize(a).toLowerCase() === path.normalize(b).toLowerCase();
-  if (same(active, dir)) return { ok: false, err: "该版本正在使用，请先切换到其他版本" };
-  return installer.uninstall(kind, dir);
+  if (same(active, dir)) return { ok: false, err: "正在使用，先切到别的版本" };
+  return installer.uninstall(k, dir);
 });
 
+/** 目录必须是绝对路径，否则写进 paths.txt 的会是一条永远扫不到的死路径 */
+const validDir = (d) => typeof d === "string" && d.length > 0 && path.isAbsolute(d);
+
 ipcMain.handle("path:add", (_e, kind, dir) => {
-  const file = kind === "jdk" ? "paths.txt" : "node_paths.txt";
-  const probe = kind === "jdk"
-    ? path.join(dir, "bin", "java.exe")
-    : path.join(dir, "node.exe");
+  if (!validDir(dir)) return { ok: false, err: "路径无效，请选择完整目录" };
+  const k = kind === "node" ? "node" : "jdk";
+  const file = k === "jdk" ? "paths.txt" : "node_paths.txt";
+  const probe = k === "jdk" ? path.join(dir, "bin", "java.exe") : path.join(dir, "node.exe");
   if (!fs.existsSync(probe)) return { ok: false, err: `该目录下没有 ${path.basename(probe)}` };
   const list = core.loadManual(file);
   list.push(path.normalize(dir));
@@ -412,7 +515,9 @@ ipcMain.handle("path:add", (_e, kind, dir) => {
 });
 
 ipcMain.handle("path:remove", (_e, kind, dir) => {
-  const file = kind === "jdk" ? "paths.txt" : "node_paths.txt";
+  if (!validDir(dir)) return { ok: false, err: "路径无效" };
+  const k = kind === "node" ? "node" : "jdk";
+  const file = k === "jdk" ? "paths.txt" : "node_paths.txt";
   const list = core.loadManual(file).filter((p) => p.toLowerCase() !== String(dir).toLowerCase());
   core.saveManual(list, file);
   return { ok: true };
@@ -439,6 +544,10 @@ ipcMain.on("win:toggleMax", () => {
 });
 ipcMain.on("win:close", () => win && win.close());
 
+// ready-to-show 里发的 win:state 早于渲染进程挂监听，会丢；
+// 所以界面起来后主动拉一次真实状态，否则最大化启动时图标是错的。
+ipcMain.handle("win:state", () => ({ maximized: !!(win && win.isMaximized()) }));
+
 ipcMain.handle("shell:open", (_e, url) => {
   if (/^https?:\/\//i.test(url)) shell.openExternal(url);
 });
@@ -457,12 +566,17 @@ if (!gotLock) {
 
   app.whenReady().then(() => {
     app.setAppUserModelId("com.github.largeakon.junctionbox");
+
+    // 主题：默认纯白，可在界面右上角切成夜间模式（偏好写进 settings.json）
+    nativeTheme.themeSource = themeMode();
+    nativeTheme.on("updated", syncWindowChrome);
+
+    // 这个程序不需要摄像头、麦克风、通知、地理位置等任何网页能力，
+    // 一律拒绝，避免将来某处内容触发系统授权弹窗。
+    session.defaultSession.setPermissionRequestHandler((_wc, _permission, cb) => cb(false));
+    session.defaultSession.setPermissionCheckHandler(() => false);
+
     createWindow();
-    nativeTheme.on("updated", () => {
-      if (win && !win.isDestroyed()) {
-        win.webContents.send("theme:changed", { dark: nativeTheme.shouldUseDarkColors });
-      }
-    });
   });
 
   app.on("window-all-closed", () => app.quit());

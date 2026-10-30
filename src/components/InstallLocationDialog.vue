@@ -47,14 +47,14 @@ onUnmounted(() => window.removeEventListener("keydown", onKey, true));
               </svg>
             </span>
             <div class="ht">
-              <h3>安装 {{ ask.label }} · 先选个位置</h3>
-              <p>会在这里建一个独立子目录（如 zulu-25.0.1），不覆盖你已有的版本。</p>
+              <h3>安装 {{ ask.label }}</h3>
+              <p>会新建独立子目录，不覆盖已有版本。</p>
             </div>
           </header>
 
           <div v-if="ask.pending" class="loading">
             <i class="spin" />
-            <span>正在检查你已有的 {{ kindName }} 装在哪…</span>
+            <span>正在查找已有的 {{ kindName }}…</span>
           </div>
 
           <div v-else class="opts">
@@ -105,8 +105,8 @@ onUnmounted(() => window.removeEventListener("keydown", onKey, true));
                   />
                   <button class="pick" @click.stop="pickAskRoot">选择…</button>
                 </div>
-                <div v-if="!sug.root" class="m">建议选一个空间充足的分区，别放在 C 盘的用户目录里</div>
-                <div v-else-if="sameAsCurrent" class="m">和当前设置的位置相同</div>
+                <div v-if="!sug.root" class="m">建议放 C 盘以外的分区</div>
+                <div v-else-if="sameAsCurrent" class="m">和当前设置相同</div>
               </div>
             </div>
           </div>
@@ -115,15 +115,14 @@ onUnmounted(() => window.removeEventListener("keydown", onKey, true));
           <div v-if="!ask.pending && !sug.root" class="note">
             <svg viewBox="0 0 24 24"><path d="M12 8v5M12 16.2v.1" /><circle cx="12" cy="12" r="9" /></svg>
             <span>
-              没找到你已有的 {{ kindName }}。程序默认位置在 C 盘（<code>{{ ask.defaultRoot }}</code>），
-              重装系统或清理 C 盘时容易被一起删掉，建议先选一个常用目录。
+              默认位置在 C 盘（<code>{{ ask.defaultRoot }}</code>），建议换个常用目录。
             </span>
             <button class="link" @click="useDefaultRoot">就用默认位置</button>
           </div>
 
           <div v-else-if="!ask.pending && sameAsCurrent" class="note soft">
             <svg viewBox="0 0 24 24"><path d="M20 6L9 17l-5-5" /></svg>
-            <span>这就是上次用的位置，装完直接切过去。</span>
+            <span>上次用的位置，装完直接切过去。</span>
           </div>
 
           <div v-if="ask.err" class="err">{{ ask.err }}</div>
@@ -161,29 +160,28 @@ onUnmounted(() => window.removeEventListener("keydown", onKey, true));
   display: grid;
   place-items: center;
   padding: 28px;
-  background: rgba(0, 0, 0, 0.3);
-  backdrop-filter: blur(5px);
+  background: var(--scrim);
+  backdrop-filter: blur(3px);
 }
 
 .card {
-  width: 560px;
+  width: 552px;
   max-width: 100%;
   max-height: calc(100vh - 56px);
   display: flex;
   flex-direction: column;
   border-radius: var(--radius-xl);
-  background: var(--layer-hover);
+  background: var(--bg);
   border: 1px solid var(--stroke-strong);
   box-shadow: var(--shadow-lg);
-  backdrop-filter: blur(40px) saturate(1.5);
   overflow: hidden;
 }
 
 /* ── 头部 ── */
 .hd {
   display: flex;
-  gap: 14px;
-  padding: 22px 24px 16px;
+  gap: 13px;
+  padding: 20px 20px 14px;
 }
 .ico {
   flex: none;
@@ -222,7 +220,7 @@ onUnmounted(() => window.removeEventListener("keydown", onKey, true));
   display: flex;
   align-items: center;
   gap: 10px;
-  margin: 6px 24px 10px;
+  margin: 4px 20px 10px;
   padding: 22px 15px;
   border-radius: var(--radius);
   border: 1px dashed var(--stroke-strong);
@@ -248,7 +246,7 @@ onUnmounted(() => window.removeEventListener("keydown", onKey, true));
   display: flex;
   flex-direction: column;
   gap: 8px;
-  padding: 0 24px 4px;
+  padding: 4px 20px 0;
 }
 .opt {
   display: flex;
@@ -356,7 +354,7 @@ onUnmounted(() => window.removeEventListener("keydown", onKey, true));
   padding: 0 10px;
   border-radius: var(--radius-sm);
   border: 1px solid var(--stroke-strong);
-  background: var(--layer-hover);
+  background: var(--layer);
   font-family: var(--font-mono);
   font-size: 12px;
   color: var(--text);
@@ -391,17 +389,17 @@ onUnmounted(() => window.removeEventListener("keydown", onKey, true));
   display: flex;
   align-items: flex-start;
   gap: 8px;
-  margin: 12px 24px 0;
+  margin: 12px 20px 0;
   padding: 10px 12px;
   border-radius: var(--radius);
   font-size: 12px;
   line-height: 18px;
   color: var(--text-2);
-  background: color-mix(in srgb, var(--warning) 11%, transparent);
-  border: 1px solid color-mix(in srgb, var(--warning) 34%, transparent);
+  background: var(--warning-soft);
+  border: 1px solid color-mix(in srgb, var(--warning) 30%, transparent);
 }
 .note.soft {
-  background: var(--layer-3);
+  background: var(--bg-sub);
   border-color: var(--stroke);
   color: var(--text-3);
 }
@@ -429,7 +427,7 @@ onUnmounted(() => window.removeEventListener("keydown", onKey, true));
   text-underline-offset: 2px;
 }
 .err {
-  margin: 10px 24px 0;
+  margin: 10px 20px 0;
   font-size: 12px;
   color: var(--danger);
 }
@@ -440,9 +438,9 @@ onUnmounted(() => window.removeEventListener("keydown", onKey, true));
   align-items: center;
   gap: 8px;
   margin-top: 16px;
-  padding: 13px 20px 13px 24px;
+  padding: 12px 16px 12px 20px;
   border-top: 1px solid var(--stroke);
-  background: var(--layer-3);
+  background: var(--bg-sub);
 }
 .grow {
   flex: 1;
