@@ -9,11 +9,9 @@ contextBridge.exposeInMainWorld("api", {
   switchJdk: (p) => ipcRenderer.invoke("jdk:switch", p),
   switchNode: (p) => ipcRenderer.invoke("node:switch", p),
   storeList: () => ipcRenderer.invoke("store:list"),
-  storePlan: (kind) => ipcRenderer.invoke("store:plan", kind),
   setStoreRoot: (kind, dir) => ipcRenderer.invoke("store:set-root", kind, dir),
   pickStoreRoot: (kind, current) => ipcRenderer.invoke("store:pick-root", kind, current),
-  installRuntime: (kind, id, root, remember) =>
-    ipcRenderer.invoke("store:install", kind, id, root, remember),
+  installRuntime: (kind, id, root) => ipcRenderer.invoke("store:install", kind, id, root),
   cancelInstall: (id) => ipcRenderer.invoke("store:cancel", id),
   removeRuntime: (kind, dir) => ipcRenderer.invoke("store:remove", kind, dir),
   onProgress: (cb) => ipcRenderer.on("install:progress", (_e, d) => cb(d)),

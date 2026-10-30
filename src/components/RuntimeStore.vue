@@ -4,13 +4,11 @@ import {
   S,
   closeStore,
   loadStore,
-  askInstall,
+  installRuntime,
   cancelInstall,
   removeRuntime,
   changeStoreRoot,
   resetStoreRoot,
-  switchJdk,
-  switchNode,
 } from "../store.js";
 import ConfirmDialog from "./ConfirmDialog.vue";
 
@@ -56,24 +54,25 @@ const fmtBytes = (n) => {
 };
 
 const pct = (it) => dl(it)?.pct || 0;
+// 整行从左往右铺满：解压阶段没有字节进度，直接给满格
+const fillW = (it) => (dl(it)?.phase === "extract" ? 100 : pct(it)) + "%";
 const phaseText = (it) => {
   const d = dl(it);
   if (!d) return "";
   if (d.phase === "extract") return "解压中…";
+  if (d.phase === "done") return "已完成";
   if (d.phase === "error") return d.error || "失败";
   const speed = d.speed ? " · " + fmtBytes(d.speed) + "/s" : "";
   if (!d.total) return fmtBytes(d.got) + speed;
   return `${d.pct}% · ${fmtBytes(d.got)} / ${fmtBytes(d.total)}${speed}`;
 };
 
+// 点「安装」直接开下载：位置就写在这一行下面，不再弹窗问一遍
 function inst(it) {
-  askInstall({ ...it, kind: kind.value });
+  installRuntime({ ...it, kind: kind.value }, roots.value[kind.value] || "");
 }
 function cancel(it) {
   cancelInstall(it.id);
-}
-function sw(it) {
-  kind.value === "jdk" ? switchJdk(it.installedPath) : switchNode(it.installedPath);
 }
 // 删除是不可恢复的物理删除（不进回收站），所以必须先确认一次
 const pending = ref(null);
@@ -112,7 +111,7 @@ function shortPath(p) {
 }
 
 function onKey(e) {
-  if (e.key === "Escape" && S.store.open && !S.store.ask) closeStore();
+  if (e.key === "Escape" && S.store.open && !pending.value) closeStore();
 }
 onMounted(() => window.addEventListener("keydown", onKey));
 onUnmounted(() => window.removeEventListener("keydown", onKey));
@@ -126,7 +125,7 @@ onUnmounted(() => window.removeEventListener("keydown", onKey));
           <header class="phead">
             <div>
               <h2>版本库</h2>
-              <p>下载后自动解压并切换，不写注册表。</p>
+              <p>下载解压到下方位置，装完回列表切换。</p>
             </div>
             <button class="xbtn" title="关闭" @click="closeStore">
               <svg class="icon" viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18"/></svg>
@@ -146,12 +145,21 @@ onUnmounted(() => window.removeEventListener("keydown", onKey));
           </div>
 
           <div class="rows">
-            <div v-for="it in items" :key="it.id" class="row" :class="{ act: isActive(it) }">
+            <div
+              v-for="it in items"
+              :key="it.id"
+              class="row"
+              :class="{ act: isActive(it), live: running(it) }"
+            >
+              <!-- 进度水填充：从左侧铺满整行，文字浮在它上面 -->
+              <i v-if="running(it) || justDone(it)" class="fill" :style="{ width: fillW(it) }" />
+
               <div class="vcol">
                 <div class="l1">
                   <b>{{ it.label }}</b>
                   <em v-if="it.tag" class="tag" :class="it.tag.toLowerCase()">{{ it.tag }}</em>
                   <em v-if="isActive(it)" class="tag now">当前使用</em>
+                  <em v-else-if="it.installedPath" class="tag hastag">已安装</em>
                 </div>
                 <div class="l2">
                   <span>{{ it.vendor }} {{ it.installedVer || it.ver }}</span>
@@ -159,25 +167,18 @@ onUnmounted(() => window.removeEventListener("keydown", onKey));
                     <span class="dot">·</span>
                     <span class="sz">下载约 {{ it.sizeMb }} MB</span>
                   </template>
-                  <template v-if="it.installedPath && managed(it)">
-                    <span class="dot">·</span>
-                    <span class="sz">版本库内</span>
-                  </template>
                 </div>
               </div>
 
               <div class="acol">
                 <!-- 下载 / 解压中 -->
                 <div v-if="running(it)" class="prog">
-                  <div class="pbar"><i :style="{ width: (dl(it)?.phase === 'extract' ? 100 : pct(it)) + '%' }" /></div>
                   <span class="pinfo">{{ phaseText(it) }}</span>
                   <button class="btn ghost sm" @click="cancel(it)">取消</button>
                 </div>
 
-                <!-- 刚装完，等列表刷新 -->
-                <div v-else-if="justDone(it)" class="prog">
-                  <span class="pinfo done">安装完成，正在切换…</span>
-                </div>
+                <!-- 刚装完，等面板收起 -->
+                <span v-else-if="justDone(it)" class="pinfo ok">{{ phaseText(it) }}</span>
 
                 <!-- 失败 -->
                 <div v-else-if="failed(it)" class="fail">
@@ -185,20 +186,17 @@ onUnmounted(() => window.removeEventListener("keydown", onKey));
                   <button class="btn sm" @click="retry(it)">重试</button>
                 </div>
 
-                <!-- 已安装 -->
-                <template v-else-if="it.installedPath">
-                  <button v-if="!isActive(it)" class="btn sm" @click="sw(it)">切换</button>
-                  <button
-                    v-if="!isActive(it) && managed(it)"
-                    class="btn danger sm"
-                    @click="rm(it)"
-                  >
-                    删除
-                  </button>
-                </template>
+                <!-- 已装好：只给删除，切换去列表做 -->
+                <button
+                  v-else-if="it.installedPath && managed(it) && !isActive(it)"
+                  class="btn danger sm"
+                  @click="rm(it)"
+                >
+                  删除
+                </button>
 
                 <!-- 未安装 -->
-                <button v-else class="btn primary sm" @click="inst(it)">
+                <button v-else-if="!it.installedPath" class="btn primary sm" @click="inst(it)">
                   <svg class="icon" viewBox="0 0 24 24"><path d="M12 4v11M7 10l5 5 5-5"/><path d="M5 19h14"/></svg>
                   安装
                 </button>
@@ -229,9 +227,7 @@ onUnmounted(() => window.removeEventListener("keydown", onKey));
     <ConfirmDialog
       :open="!!pending"
       title="删除这个版本？"
-      :message="
-        pendingName + ' 会被彻底删除，不进回收站，无法恢复。'
-      "
+      :message="pendingName + ' 会被彻底删除，不进回收站，无法恢复。'"
       ok-text="删除"
       danger
       @close="pending = null"
@@ -321,6 +317,7 @@ onUnmounted(() => window.removeEventListener("keydown", onKey));
 }
 
 .row {
+  position: relative;
   display: flex;
   align-items: center;
   gap: 14px;
@@ -328,6 +325,7 @@ onUnmounted(() => window.removeEventListener("keydown", onKey));
   border-radius: var(--radius);
   border: 1px solid var(--stroke);
   background: var(--layer);
+  overflow: hidden;
   transition: background var(--dur-fast) var(--ease), border-color var(--dur-fast) var(--ease);
 }
 .row:hover {
@@ -339,8 +337,29 @@ onUnmounted(() => window.removeEventListener("keydown", onKey));
   background: var(--layer);
   box-shadow: var(--shadow-sm);
 }
+.row.live {
+  border-color: var(--accent-stroke);
+}
+
+/* 进度：整行从左往右灌满 */
+.fill {
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  background: linear-gradient(
+    90deg,
+    var(--accent-soft) 0%,
+    color-mix(in srgb, var(--accent) 14%, transparent) 100%
+  );
+  border-right: 1px solid var(--accent-stroke);
+  transition: width 180ms linear;
+  pointer-events: none;
+}
 
 .vcol {
+  position: relative;
+  z-index: 1;
   flex: 1;
   min-width: 0;
 }
@@ -387,43 +406,34 @@ onUnmounted(() => window.removeEventListener("keydown", onKey));
 }
 
 .acol {
+  position: relative;
+  z-index: 1;
   flex: none;
   display: flex;
   align-items: center;
-  gap: 5px;
-  min-width: 92px;
+  gap: 8px;
+  min-width: 96px;
   justify-content: flex-end;
 }
+.row.live .acol {
+  min-width: 236px;
+}
 
-/* 进度 */
+/* 进度文案 */
 .prog {
   display: flex;
   align-items: center;
   gap: 9px;
-  width: 250px;
-}
-.pbar {
-  flex: 1;
-  height: 3px;
-  border-radius: 2px;
-  background: var(--bg-sunken);
-  overflow: hidden;
-}
-.pbar i {
-  display: block;
-  height: 100%;
-  border-radius: 2px;
-  background: var(--accent);
-  transition: width 160ms linear;
 }
 .pinfo {
   font-size: 11px;
-  color: var(--text-3);
+  color: var(--text-2);
   font-variant-numeric: tabular-nums;
   white-space: nowrap;
 }
-.pinfo.done {
+.pinfo.ok {
   color: var(--success);
+  font-weight: 550;
 }
 
 .fail {
@@ -524,7 +534,7 @@ onUnmounted(() => window.removeEventListener("keydown", onKey));
 }
 .store-enter-from .panel,
 .store-leave-to .panel {
-  opacity: 0;
   transform: scale(0.985) translateY(6px);
+  opacity: 0;
 }
 </style>

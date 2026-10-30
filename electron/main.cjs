@@ -243,31 +243,29 @@ function createWindow() {
         const shot5 = await win.webContents.capturePage();
         fs.writeFileSync(path.join(outDir, "5-store.png"), shot5.toPNG());
 
-        // 安装选址对话框：点第一个未安装版本的「安装」，只截图不确认
-        const clicked = await win.webContents
+        // 安装进度：直接注入一份下载中状态，验收版本库里的整行水填充
+        const seeded = await win.webContents
           .executeJavaScript(
             `(() => {
-              const rows = [...document.querySelectorAll('.rows .row')];
-              for (const row of rows) {
-                const b = [...row.querySelectorAll('button')].find((x) => x.innerText.trim() === '安装');
-                if (b) { b.click(); return { ok: true, row: row.innerText.replace(/\\s+/g, ' ').slice(0, 40) }; }
-              }
-              return { ok: false, rows: rows.length };
+              const S = window.__JDT;
+              const list = S.store.kind === 'jdk' ? S.store.jdk : S.store.node;
+              const it = list.find((x) => !x.installedPath);
+              if (!it) return null;
+              S.dl[it.id] = {
+                phase: 'download',
+                pct: 46,
+                got: 96 * 1024 * 1024,
+                total: 209 * 1024 * 1024,
+                speed: 6.2 * 1024 * 1024,
+              };
+              return it.label;
             })()`
           )
-          .catch((e) => ({ err: String(e) }));
-        console.log("[ask]", JSON.stringify(clicked));
-        await new Promise((r) => setTimeout(r, 3200));
-        const askState = await win.webContents
-          .executeJavaScript(`(() => {
-            const a = window.__JDT && window.__JDT.store.ask;
-            if (!a) return "null";
-            return JSON.stringify({ mode: a.mode, label: a.label, suggested: a.suggested && a.suggested.root, count: a.suggested && a.suggested.count, defaultRoot: a.defaultRoot, current: a.current });
-          })()`)
           .catch((e) => "err " + String(e));
-        console.log("[ask] state", JSON.stringify(askState));
+        console.log("[progress]", JSON.stringify(seeded));
+        await new Promise((r) => setTimeout(r, 700));
         const shot6 = await win.webContents.capturePage();
-        fs.writeFileSync(path.join(outDir, "6-location.png"), shot6.toPNG());
+        fs.writeFileSync(path.join(outDir, "6-progress.png"), shot6.toPNG());
         const errs = await win.webContents
           .executeJavaScript("(window.__errs || []).slice(0, 6)")
           .catch(() => []);
@@ -401,25 +399,7 @@ ipcMain.handle("store:list", async () => {
   };
 });
 
-/**
- * 点「安装」前的选址建议。
- * 从用户机器上已有的 JDK / Node 反推他习惯把版本放在哪，
- * 例如 JDK 17 在 E:\develop\Java\jdk17 → 建议 JDK 25 装进 E:\develop\Java。
- */
-ipcMain.handle("store:plan", async (_e, kind) => {
-  const k = kind === "node" ? "node" : "jdk";
-  const dirs = k === "jdk" ? (await core.findJdks()).map((x) => x.path) : (await core.findNodes()).map((x) => x.path);
-  return {
-    kind: k,
-    suggested: installer.suggestRoot(k, dirs),
-    root: installer.rootOf(k),
-    custom: installer.rootIsCustom(k),
-    defaultRoot: installer.defaultRoot(k),
-    found: dirs.length,
-  };
-});
-
-/** 记住安装位置（勾了「以后都装到这里」才调用） */
+/** 记住安装位置（版本库底部的「更改」/「恢复默认」调用） */
 ipcMain.handle("store:set-root", async (_e, kind, dir) => {
   const k = kind === "node" ? "node" : "jdk";
   if (!dir) {
@@ -454,7 +434,7 @@ ipcMain.handle("store:pick-root", async (_e, kind, current) => {
 
 // 同一时刻只跑一个安装：并发下载会互相抢带宽，进度也没法看
 let installing = "";
-ipcMain.handle("store:install", async (_e, kind, id, root, remember) => {
+ipcMain.handle("store:install", async (_e, kind, id, root) => {
   if (installing) return { ok: false, err: "已有版本正在安装，请等它完成" };
   const k = kind === "node" ? "node" : "jdk";
   const item = catalog.find(k, id);
@@ -464,9 +444,6 @@ ipcMain.handle("store:install", async (_e, kind, id, root, remember) => {
   const c = installer.checkRoot(k, root || installer.rootOf(k));
   if (!c.ok) return { ok: false, err: c.err };
 
-  if (remember) {
-    installer.setRoot(k, c.path);
-  }
   const file = k === "jdk" ? "paths.txt" : "node_paths.txt";
   const list = core.loadManual(file);
   if (!list.some((x) => path.normalize(x).toLowerCase() === path.normalize(c.path).toLowerCase())) {

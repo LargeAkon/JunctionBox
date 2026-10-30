@@ -6,12 +6,11 @@ import JdkView from "./views/JdkView.vue";
 import NodeView from "./views/NodeView.vue";
 import AboutView from "./views/AboutView.vue";
 import RuntimeStore from "./components/RuntimeStore.vue";
-import InstallLocationDialog from "./components/InstallLocationDialog.vue";
 
 const navs = [
   { id: "ports", label: "端口检测" },
-  { id: "jdk", label: "JDK 版本" },
-  { id: "node", label: "Node 版本" },
+  { id: "jdk", label: "Java" },
+  { id: "node", label: "Node" },
   { id: "about", label: "关于" },
 ];
 
@@ -65,7 +64,7 @@ function reload() {
           <svg viewBox="0 0 16 16" class="mark"><path d="M7.2 1.6v7.1a1.9 1.9 0 0 1-1.9 1.9 1.9 1.9 0 0 1-1.9-1.9" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/><path d="M11.3 1.4h2.4v6.6a2.3 2.3 0 0 1-4.6 0v-.6" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/><path d="M3 14.2h10" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" opacity=".55"/></svg>
         </div>
         <span class="name">JunctionBox</span>
-        <span class="ver">v{{ S.info?.version || "4.2.0" }}</span>
+        <span class="ver">v{{ S.info?.version || "4.2.1" }}</span>
       </div>
 
       <div class="tright">
@@ -133,7 +132,7 @@ function reload() {
     <!-- ── 状态栏 ───────────────────────────────── -->
     <footer class="statusbar">
       <span class="pi"><i class="dot" :class="{ live: S.scanning }"/></span>
-      <span>JDK <b>{{ S.activeJdk.ver || "—" }}</b></span>
+      <span>Java <b>{{ S.activeJdk.ver || "—" }}</b></span>
       <span class="sep"/>
       <span>Node <b>{{ S.activeNode.ver || "—" }}</b></span>
       <span class="sep"/>
@@ -149,10 +148,8 @@ function reload() {
       </div>
     </Transition>
 
-    <!-- ── 版本库（全局单例，由 JDK / Node 页唤起）── -->
+    <!-- ── 版本库（全局单例，由 Java / Node 页唤起）── -->
     <RuntimeStore />
-    <!-- ── 安装选址（点「安装」时先问装到哪个目录）── -->
-    <InstallLocationDialog />
   </div>
 </template>
 

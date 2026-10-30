@@ -32,8 +32,6 @@ export const S = reactive({
     roots: {},
     customRoot: {},
     defaultRoot: {},
-    // 安装选址对话框：null = 关闭
-    ask: null,
   },
   // 安装进度：id -> { phase, pct, got, total, speed, error, source }
   dl: {},
@@ -262,110 +260,13 @@ export function closeStore() {
   S.store.open = false;
 }
 
-// ---------------------------------------------------------------- 安装选址
+// ---------------------------------------------------------------- 安装位置
 /**
- * 点「安装」不等于「直接装到 C 盘」。
- * 先问：装到你现在放 JDK/Node 的那个目录行不行？
- *  - 有建议（用户已有同类版本）→ 默认选中「和现有版本放在一起」，一次点击即可
- *  - 没有建议 → 不预填路径，逼用户先想清楚装到哪，而不是默默塞进 C 盘
+ * 安装位置只在版本库底部维护一处：点「安装」直接用这里显示的位置，
+ * 不再弹窗二次确认 —— 位置就在按钮下方一行，看得见也改得动。
  */
-export async function askInstall(item) {
-  const kind = item.kind;
-  // 先把对话框弹出来（探测要跑一次版本扫描，1 秒左右，别让用户以为点了没反应）
-  S.store.ask = {
-    open: true,
-    pending: true,
-    kind,
-    id: item.id,
-    label: item.label,
-    suggested: {},
-    defaultRoot: "",
-    current: "",
-    custom: "",
-    mode: "custom",
-    remember: true,
-    err: "",
-  };
 
-  let plan = null;
-  try {
-    plan = await window.api.storePlan(kind);
-  } catch (e) {
-    plan = null;
-  }
-
-  const a = S.store.ask;
-  if (!a || a.id !== item.id) return; // 探测期间被关掉了
-  a.pending = false;
-  if (!plan) {
-    a.err = "读取安装位置失败，请手动选择目录";
-    return;
-  }
-
-  const sug = plan.suggested || {};
-  const remembered = plan.custom ? plan.root : "";
-  a.suggested = sug;
-  a.defaultRoot = plan.defaultRoot || plan.root || "";
-  a.current = plan.root || "";
-  a.custom = remembered || "";
-  // 有建议就默认选中建议；没有建议就留空让用户自己定，绝不默认塞 C 盘
-  a.mode = sug.root ? "suggested" : "custom";
-}
-
-export function closeAsk() {
-  S.store.ask = null;
-}
-
-/** 对话框里最终会用到的路径 */
-export function askRoot() {
-  const a = S.store.ask;
-  if (!a) return "";
-  if (a.mode === "suggested") return a.suggested?.root || "";
-  return String(a.custom || "").trim();
-}
-
-export function setAskMode(mode) {
-  const a = S.store.ask;
-  if (!a) return;
-  a.mode = mode;
-  a.err = "";
-}
-
-/** 弹目录选择框；选完自动切到「自定义」 */
-export async function pickAskRoot() {
-  const a = S.store.ask;
-  if (!a) return;
-  const r = await window.api.pickStoreRoot(a.kind, askRoot() || a.current || a.defaultRoot);
-  if (!r?.ok) return;
-  a.custom = r.path;
-  a.mode = "custom";
-  a.err = "";
-}
-
-export function useDefaultRoot() {
-  const a = S.store.ask;
-  if (!a) return;
-  a.custom = a.defaultRoot;
-  a.mode = "custom";
-  a.err = "";
-}
-
-/** 确认安装：把位置一起带过去，勾了「以后都装到这里」才写进配置 */
-export async function confirmAsk() {
-  const a = S.store.ask;
-  if (!a) return;
-  const root = askRoot();
-  if (!root) {
-    a.err = "请先选择安装位置";
-    return;
-  }
-  const payload = { kind: a.kind, id: a.id, label: a.label };
-  const remember = a.remember;
-  S.store.ask = null;
-  await installRuntime(payload, root, remember);
-}
-
-/** 版本库底部的「更改…」：改默认安装位置 */
+/** 版本库底部的「更改」：改默认安装位置 */
 export async function changeStoreRoot(kind, current) {
   const r = await window.api.pickStoreRoot(kind, current || S.store.roots[kind] || "");
   if (!r?.ok) return;
@@ -391,15 +292,15 @@ export async function resetStoreRoot(kind) {
 
 /**
  * 安装一个运行时。
- * 装完立刻切过去——用户点「安装」的意图就是「让我能用这个版本」，
- * 再让他回列表点一次切换是多余的一步。
+ * 装完只做两件事：刷新列表、把版本库收起来。
+ * 切哪个版本交给用户回列表自己选 —— 版本库只负责「把东西拿到本地」。
  */
-export async function installRuntime(item, root = "", remember = false) {
+export async function installRuntime(item, root = "") {
   const id = item.id;
   if (S.dl[id] && ["download", "extract"].includes(S.dl[id].phase)) return;
   S.dl[id] = { phase: "download", pct: 0, got: 0, total: 0, speed: 0 };
   try {
-    const r = await window.api.installRuntime(item.kind, id, root, remember);
+    const r = await window.api.installRuntime(item.kind, id, root, false);
     if (!r.ok) {
       if (r.cancelled) {
         delete S.dl[id];
@@ -412,13 +313,13 @@ export async function installRuntime(item, root = "", remember = false) {
     }
     await refreshEnv();
     await loadStore();
-    delete S.dl[id];
-    // 装到用户自己的目录里时，提示一下具体落点，避免以后找不到
-    if (r.root && item.kind && S.store.customRoot?.[item.kind]) {
-      toast("已安装到 " + r.path, "ok");
-    }
-    if (item.kind === "jdk") await switchJdk(r.path);
-    else await switchNode(r.path);
+    // 进度条铺满整行后停顿一拍再收面板，否则「装完了」这件事没有反馈
+    S.dl[id] = { ...(S.dl[id] || {}), phase: "done", pct: 100 };
+    toast("已安装 " + item.label + " · 回列表切换", "ok");
+    setTimeout(() => {
+      delete S.dl[id];
+      if (S.store.open) closeStore();
+    }, 700);
   } catch (e) {
     delete S.dl[id];
     toast("安装失败：" + errText(e), "error");

@@ -17,8 +17,8 @@ const cur = computed(() => (S.activeJdk.ver ? "Java " + S.activeJdk.ver : ""));
 
 <template>
   <VersionPanel
-    title="JDK 版本"
-    family="JDK"
+    title="Java 版本"
+    family="Java"
     :current-ver="cur"
     :current-path="S.activeJdk.path"
     note-label="JAVA_HOME"

@@ -96,9 +96,10 @@ console.log("\n[安装位置校验]");
   ok(installer.checkRoot("jdk", "").ok === false, "空路径被拒绝");
   ok(installer.checkRoot("jdk", "relative\\dir").ok === false, "相对路径被拒绝");
   ok(installer.checkRoot("jdk", "E:\\").ok === false, "盘符根被拒绝");
-  const dirs = ["E:\\develop\\Java\\jdk", "E:\\develop\\Java\\jdk8", "C:\\Users\\x\\AppData\\Local\\JavaDevTool\\runtimes\\jdk\\z"];
+  // 用挂不上的 Z: 盘构造，避免依赖本机真实安装位置（rootOf 会随配置变化）
+  const dirs = ["Z:\\dev\\Java\\jdk", "Z:\\dev\\Java\\jdk8", "C:\\Users\\x\\AppData\\Local\\JavaDevTool\\runtimes\\jdk\\z"];
   const sug = installer.suggestRoot("jdk", dirs);
-  eq(sug.root, "E:\\develop\\Java", "从已有版本反推出父目录");
+  eq(sug.root, "Z:\\dev\\Java", "从已有版本反推出父目录");
   eq(sug.count, 2, "AppData 里的自建版本不计入习惯");
 }
 
