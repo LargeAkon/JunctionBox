@@ -2,79 +2,24 @@
 
 # JunctionBox
 
-**One junction. Every runtime.**
+**Switch JDK and Node.js versions in 15 milliseconds.**
 
-Port inspection, plus JDK / Node.js installation and switching, all in one window.
-Switching re-points an NTFS directory junction and takes about **15 ms** —
-**no registry writes, no terminal restarts, no admin rights.**
+Port inspection and runtime management for Windows.
+Switching re-points an NTFS directory junction — no registry writes,
+no administrator rights, no environment rebuild.
 
-[中文说明](./README.zh-CN.md) · [Download](https://github.com/LargeAkon/JunctionBox/releases/latest) · [Changelog](./CHANGELOG.md) · [Architecture](./docs/ARCHITECTURE.md)
-
-![Platform](https://img.shields.io/badge/platform-Windows%2010%2F11%20x64-0078D4?logo=windows&logoColor=white)
-![Tech](https://img.shields.io/badge/Electron-Vue%203-646cff?logo=electron)
-![License](https://img.shields.io/badge/license-MIT-green)
+[![Platform](https://img.shields.io/badge/platform-Windows%2010%2F11%20x64-0078D4?logo=windows&logoColor=white)](https://github.com/LargeAkon/JunctionBox/releases/latest)
+[![Electron](https://img.shields.io/badge/Electron-44.9-47848F?logo=electron&logoColor=white)](https://www.electronjs.org/)
+[![Vue](https://img.shields.io/badge/Vue-3.5-41B883?logo=vue.js&logoColor=white)](https://vuejs.org/)
+[![License](https://img.shields.io/badge/license-MIT-blue)](./LICENSE)
 [![Build](https://github.com/LargeAkon/JunctionBox/actions/workflows/release.yml/badge.svg)](https://github.com/LargeAkon/JunctionBox/actions/workflows/release.yml)
 
+[Download](https://github.com/LargeAkon/JunctionBox/releases/latest) ·
+[中文说明](./README.zh-CN.md) ·
+[Architecture](./docs/ARCHITECTURE.md) ·
+[Changelog](./CHANGELOG.md)
+
 </div>
-
-> The UI ships in Simplified Chinese; an English UI is on the [roadmap](#roadmap).
-> The detailed documents under `docs/` are Chinese only — a [Chinese README](./README.zh-CN.md)
-> mirrors this page.
-
-## What it solves
-
-Three things that keep costing time on Windows:
-
-| Problem | Before | Now |
-|---|---|---|
-| **Port already in use** | `netstat -ano \| findstr :8080` gives a PID; then hunt it down in Task Manager | One list of port, PID, process name and full command line — kill from the row |
-| **Switching JDK / Node** | Edit `JAVA_HOME`, reorder `Path`, reopen every terminal, and the IDE still has the old one | Double-click. ~15 ms. Environment variables are configured once |
-| **Only one version installed** | Download from a vendor site, unzip, wire up `JAVA_HOME` by hand | The store ships 5 JDKs and 4 Node LTS lines — pick one, it installs and switches |
-
-## Download
-
-Grab the latest build from [**Releases**](https://github.com/LargeAkon/JunctionBox/releases/latest):
-
-| File | Choose this if… |
-|---|---|
-| **`JunctionBox-Portable-x64.exe`** | You want to double-click and run. Single file, nothing written system-wide, delete the file to uninstall |
-| **`JunctionBox-Setup-x64.exe`** | You want a Start Menu entry, a desktop shortcut and a custom install directory |
-
-Windows 10 / 11, x64, about 108 MB. **Rolling back**: install the older package over the new
-one; junctions and scan paths are preserved.
-
-> SmartScreen may warn on first launch because the binaries are not code-signed.
-> Click **More info → Run anyway**, or [build from source](#build-from-source).
-
-## Quick start
-
-1. Run `JunctionBox-Portable-x64.exe`.
-2. Open **Ports** to see who is listening on what. Double-click a row to kill it.
-3. Open **JDK** or **Node**, pick a version, double-click to switch.
-4. Only one version installed? Click **版本库 / Store** in the top-right corner, install
-   another one, and it switches automatically.
-5. **Open a new terminal** and verify with `java -version` / `node -v`.
-
-> **A new terminal is required.** Terminals that were already open — including the ones
-> embedded in your IDE — keep the environment they inherited at launch. That is Windows
-> behaviour, not a bug.
-
-## Features
-
-| Area | What it does |
-|---|---|
-| **Port inspector** | Scans listening ports, resolves PID → process name → full command line, kills with one click |
-| **JDK switcher** | Auto-discovers installed JDKs with version and vendor, switches `JAVA_HOME` + `Path` on double-click |
-| **Node switcher** | Auto-discovers Node installs, shows version, architecture and bundled npm |
-| **Runtime store** | Curated catalog with on-demand downloads, switching included |
-| **PATH editor** | Add or remove PATH entries per runtime, with a directory picker |
-| **Self-healing** | Repairs broken junctions and stale PATH entries at startup |
-| **Native look** | Mica backdrop, Fluent 2 motion, custom title bar, dark theme |
-
-See [how versions are discovered](#how-versions-are-discovered) for scan locations and
-custom path registration.
-
-## Screenshots
 
 <table>
   <tr>
@@ -82,133 +27,185 @@ custom path registration.
     <td width="50%"><img src="docs/screenshots/3-node.png" alt="Node switcher" /></td>
   </tr>
   <tr>
-    <td align="center"><sub><b>JDK switcher</b> — one double-click, current version marked</sub></td>
-    <td align="center"><sub><b>Node switcher</b> — version, architecture, bundled npm</sub></td>
+    <td align="center"><sub><b>JDK</b> — versions with vendor, one double-click to switch</sub></td>
+    <td align="center"><sub><b>Node</b> — version, architecture, bundled npm</sub></td>
   </tr>
   <tr>
     <td width="50%"><img src="docs/screenshots/5-store.png" alt="Runtime store" /></td>
     <td width="50%"><img src="docs/screenshots/6-location.png" alt="Install location" /></td>
   </tr>
   <tr>
-    <td align="center"><sub><b>Runtime store</b> — install without leaving the app</sub></td>
-    <td align="center"><sub><b>Install location</b> — asked every time, defaulting to where your versions already live</sub></td>
+    <td align="center"><sub><b>Store</b> — nine runtimes, downloaded on demand</sub></td>
+    <td align="center"><sub><b>Location</b> — asked once, defaults to your existing folder</sub></td>
   </tr>
   <tr>
     <td width="50%"><img src="docs/screenshots/4-about.png" alt="Environment" /></td>
     <td width="50%"><img src="docs/screenshots/1-ports.png" alt="Port inspector" /></td>
   </tr>
   <tr>
-    <td align="center"><sub><b>Environment</b> — resolved JAVA_HOME and active runtimes</sub></td>
-    <td align="center"><sub><b>Port inspector</b> — who holds the port, command line included</sub></td>
+    <td align="center"><sub><b>Environment</b> — resolved <code>JAVA_HOME</code> and active runtimes</sub></td>
+    <td align="center"><sub><b>Ports</b> — PID resolved to process and command line</sub></td>
   </tr>
 </table>
 
-## Why 15 milliseconds
+## Highlights
 
+- **15 ms switching.** Re-pointing one junction beats rewriting `JAVA_HOME` and `Path`;
+  measured **12–17 ms** on a warm system.
+- **Environment written once.** Setup points `JAVA_HOME` and the first `Path` entry at two
+  fixed junction paths. Every later switch leaves both untouched.
+- **No elevation.** Junctions do not require `SeCreateSymbolicLinkPrivilege`, so the app never
+  asks for UAC.
+- **Port inspector.** `netstat` plus a single CIM query resolves 68 listening entries to PID,
+  process name and full command line in **~600 ms**.
+- **Runtime store.** JDK 8 / 11 / 17 / 21 / 25 and Node 20 / 22 / 24 / 26, streamed from mirror
+  chains on demand — which is why the installer stays at **108 MB**.
+- **Self-healing.** Broken junctions and stale `Path` entries are repaired at startup.
+- **Native surface.** Mica backdrop, Fluent 2 motion, custom title bar, `frame: false`, no
+  browser chrome.
+
+## How it works
+
+Two fixed paths, created once, are what everything else depends on:
+
+```text
+JAVA_HOME          %LOCALAPPDATA%\JavaDevTool\links\jdk    ─┐
+Path[0]            %LOCALAPPDATA%\JavaDevTool\links\node   ─┤  NTFS junction
+                                                            │
+                   E:\develop\Java\zulu-21.0.13  ◄──────────┘
 ```
-Traditional  Path = C:\...\jdk-17\bin ; C:\...\node-v20 ; ...
-             switching = rewrite the registry + broadcast WM_SETTINGCHANGE (seconds)
 
-JunctionBox  JAVA_HOME   = %LOCALAPPDATA%\JavaDevTool\links\jdk   (junction)
-             Path first  = %LOCALAPPDATA%\JavaDevTool\links\node  (junction)
-             switching = re-point the junction. Pure filesystem operation.
+Switching is a re-point, not an environment edit:
+
+```text
+1  verify the target contains bin\java.exe (JDK) or node.exe (Node)
+2  delete the old link     [IO.Directory]::Delete(link, recursive: false)
+3  create the new link     junction -> selected directory
+4  update state, broadcast in the background (fire and forget)
 ```
 
-| | Registry / Path editing | JunctionBox |
+Step 2 is the line that must stay non-recursive. A recursive delete on a junction follows it
+into the real installation and takes the JDK with it — the same rule applies to every delete
+path in the codebase.
+
+| | Editing `JAVA_HOME` / `Path` | JunctionBox |
 |---|---|---|
-| Switch cost | Seconds + broadcast | **~15 ms** |
-| Registry writes | Every switch | First-time setup only |
-| Needs admin | Often | **No** |
-| Cross-drive | — | Works (junctions, not symlinks) |
+| Switch cost | seconds, plus a `WM_SETTINGCHANGE` broadcast | **12–17 ms** |
+| Registry writes | every switch | **first-time setup only** |
+| Administrator rights | usually | **never** |
+| Cross-drive (C: → E:) | — | works |
+| Terminals to reopen | all | all — Windows copies the environment at process start |
 
-Why junctions instead of symbolic links, and how links are deleted without touching real
-directories: [**docs/ARCHITECTURE.md**](./docs/ARCHITECTURE.md) (Chinese).
+The last row is a platform property, not a defect: no tool can reach into a running process and
+replace its environment block.
 
-## Using the runtime store
+## Design decisions
 
-Most machines have exactly one JDK and one Node, which means there is nothing to switch
-between. The store fills that gap.
+| Decision | Rejected alternative | Reason |
+|---|---|---|
+| Directory junctions | symbolic links | Symlinks need `SeCreateSymbolicLinkPrivilege`, which means elevation for every user |
+| Environment written once | rewriting on each switch | Removes the broadcast, the wait, and the stale-IDE class of bugs |
+| Metadata catalog, download on demand | bundling runtimes in the installer | Nine runtimes add ~500 MB to every release and freeze the set at build time |
+| System `tar.exe` (bsdtar) | `Expand-Archive`, JS unzip | 190 MB in **1 s** against 20–40 s, and no non-ASCII path bugs |
+| Install ledger (`installed.json`) | path-prefix check | The install root may be the user's own JDK folder; a prefix check would point the delete button at it |
+| Temp directory + atomic rename | unpacking in place | A cancelled or failed download leaves no half-installed runtime in the list |
 
-- **Catalog**: JDK 8 / 11 / 17 / 21 / 25 (Azul Zulu), Node 20 / 22 / 24 / 26 (LTS lines).
-- **Why the installer stays at 108 MB**: the catalog is metadata only; binaries are fetched
-  on demand. Bundling all nine runtimes would push every release past 600 MB.
-- **You choose where it lands**: clicking *Install* first scans your machine and offers the
-  folder your existing runtimes live in (a sibling directory), or you pick your own.
-  Nothing is silently dropped into `C:`.
-- **Mirror fallback per entry**: JDK uses Azul CDN → Tsinghua mirror, Node uses
-  npmmirror → Tsinghua → nodejs.org. One blocked host does not break the feature.
-- **Delete only touches what the store installed**: the install location may point at your
-  own JDK folder, and versions there are never removable from the app.
+## Tech stack
 
-Full mechanics (mirrors, install ledger, directory layout, delete protection):
-[**docs/RUNTIME-STORE.md**](./docs/RUNTIME-STORE.md) (Chinese).
+| Layer | Technology |
+|---|---|
+| Shell | Electron 44.9, Chromium + Node in one process tree |
+| UI | Vue 3.5, no component library — every control is written against the design tokens |
+| Build | Vite 8 for the renderer, electron-builder 26 for NSIS and portable targets |
+| Styling | Hand-written CSS on Fluent 2 tokens; Mica via `backgroundMaterial` |
+| Process model | `contextIsolation: true`, `nodeIntegration: false`, preload bridge |
+| System layer | `child_process`, PowerShell 5.1, .NET Registry API, `netstat`, CIM |
+| Link layer | NTFS directory junctions (`fs.symlink` with `type: "junction"`, `[IO.Directory]`) |
+| Store | Metadata catalog → mirror chain → length check → bsdtar → atomic rename |
+| CI | GitHub Actions: tag push builds, packages and publishes both artifacts |
 
-## How versions are discovered
+## Measured
 
-- **JDK**: `Program Files\Java`, Adoptium, Corretto, Zulu, Microsoft, BellSoft, Semeru,
-  JetBrains Runtime, `~\.jdks`, and any directory on `Path` containing `bin\java.exe`.
-- **Node**: `Program Files\nodejs`, `nvm4w`, `NVM_HOME`, `NVM_SYMLINK`, `VOLTA_HOME`,
-  Volta's image directory, and any directory on `Path` containing `node.exe`.
+Numbers from a single Windows 11 / i5 machine, warm cache, no antivirus exclusions.
 
-**Not detected?** Use **Add path** in the app to register any directory. Custom paths are
-stored in `%APPDATA%\JavaDevTool\` and merged into every scan.
+| Operation | Result | Conditions |
+|---|---|---|
+| Version switch | **12–17 ms** | junction re-point, both directions |
+| Port scan | ~600 ms | 68 listening entries, 2 shell invocations |
+| JDK 21 extraction | ~1 s | 190 MB zip, bsdtar |
+| JDK 21 download | 5.2 MB/s | Azul CDN |
+| Node 22 download | 9.5 MB/s | npmmirror |
+| Installer size | 108 MB | portable and NSIS builds |
 
-## FAQ
+## Runtime store
 
-**Does it modify the registry?**
-Once, during first-time setup, to point `JAVA_HOME` and the first `Path` entry at the junction
-folders. After that, switching never touches it.
+The catalog in [`electron/catalog.cjs`](./electron/catalog.cjs) holds metadata only —
+`{ id, feature, label, ver, vendor, sizeMb, sources[] }` — and `sources` is a mirror chain tried
+in order: Azul CDN → Tsinghua for JDKs, npmmirror → Tsinghua → nodejs.org for Node.
 
-**My terminal still shows the old version.**
-Processes inherit their environment at launch. Close and reopen the terminal, including the
-one inside your IDE.
+- Downloads are streamed, length-verified against `Content-Length`, and cancellable mid-flight.
+- Each one unpacks into `.tmp_<id>_<timestamp>` and is only renamed into place once
+  `bin\java.exe` or `node.exe` is confirmed to exist.
+- A same-named directory the store did not create is never overwritten; the new one lands as a
+  sibling instead.
+- Deletion is restricted to the install ledger, so a user who points the store at their own
+  `E:\develop\Java` never finds their own versions offered for deletion.
 
-**Does it conflict with nvm-windows / Volta?**
-They can coexist; JunctionBox detects their directories. Just don't let two tools manage the
-same PATH entry.
+Full mechanics: [docs/RUNTIME-STORE.md](./docs/RUNTIME-STORE.md).
 
-**Where do downloaded runtimes go?**
-Wherever you say. The choice is remembered in `%APPDATA%\JavaDevTool\roots.json`; with nothing
-configured it falls back to `%LOCALAPPDATA%\JavaDevTool\runtimes\`. No UAC prompt, nothing
-written system-wide.
+## Install
 
-**Antivirus flags it.**
-Unsigned Electron binaries trip heuristic engines. The source is here — audit and build it
-yourself if you prefer.
+| Artifact | For |
+|---|---|
+| **`JunctionBox-Portable-x64.exe`** | Single file, nothing written system-wide, delete it to uninstall |
+| **`JunctionBox-Setup-x64.exe`** | Start Menu entry, desktop shortcut, custom install directory |
 
-Firewall popups, GPU crashes and junction repair are covered in
-[**docs/TROUBLESHOOTING.md**](./docs/TROUBLESHOOTING.md) (Chinese).
+Windows 10 / 11, x64, ~108 MB. Rolling back means installing the older package; junctions and
+scan paths survive it.
+
+```text
+1  Run the executable.
+2  Ports page     see who holds a port, double-click a row to end the process.
+3  JDK / Node     pick a version, double-click to switch.
+4  Store          nothing to switch to? install one; it switches automatically.
+5  New terminal   verify with java -version / node -v.
+```
+
+The binaries are unsigned, so SmartScreen may warn on first launch — **More info → Run anyway**,
+or [build it yourself](#build-from-source).
 
 ## Build from source
 
-Requires **Node.js 20+** and **Windows**.
+Requires **Node.js 20+** on **Windows**.
 
 ```bash
 git clone https://github.com/LargeAkon/JunctionBox.git
 cd JunctionBox
 npm install
 
-npm run dev      # develop with hot reload
-npm run dist     # build NSIS installer + portable exe
+npm run dev              # Vite + Electron with hot reload
+npm run dist             # NSIS installer + portable exe into release/
+npm run dist:dir         # unpacked build only, for quick checks
+npm run catalog:update   # refresh the runtime catalog from vendor metadata
 ```
 
-Artifacts land in `release/`: `JunctionBox-Setup-x64.exe` and `JunctionBox-Portable-x64.exe`.
-`npm run dist:dir` skips packaging and only produces `release/win-unpacked/`.
+## Documentation
 
-## Roadmap
+| Document | Audience | Contents |
+|---|---|---|
+| [docs/ARCHITECTURE.md](./docs/ARCHITECTURE.md) | Developers | Process model, IPC surface, junction internals, code map |
+| [docs/RUNTIME-STORE.md](./docs/RUNTIME-STORE.md) | Users, developers | Catalog, mirrors, install location, ledger, layout |
+| [docs/TROUBLESHOOTING.md](./docs/TROUBLESHOOTING.md) | Users | Symptom-first fixes: stale terminal, firewall, broken link |
+| [CONTRIBUTING.md](./CONTRIBUTING.md) | Contributors | Build, style, commit and release flow |
+| [CHANGELOG.md](./CHANGELOG.md) | Everyone | Per-release changes; source of the GitHub release notes |
 
-- [x] GitHub Actions build and release on `v*` tag push
-- [x] Runtime store with on-demand JDK / Node downloads
-- [ ] Code signing to remove SmartScreen warnings
-- [ ] English UI (currently Simplified Chinese)
-- [ ] Per-project version pinning (`.java-version` / `.nvmrc`)
-- [ ] Export / import environment profiles
+## Limitations
 
-## Contributing
-
-Issues and PRs are welcome — see [CONTRIBUTING.md](./CONTRIBUTING.md).
-
-If this saved you a few `EADDRINUSE` headaches, a ⭐ helps others find it.
+- **Windows only.** Junctions, `netstat` output and the registry layout are platform specific;
+  other systems need a different link model, not a flag.
+- **Switching is global.** No per-project pinning (`.java-version`, `.nvmrc`) yet.
+- **Chinese UI.** An English interface is on the roadmap.
+- **Unsigned binaries.** Heuristic antivirus engines may flag the Electron bundle.
 
 ## License
 
