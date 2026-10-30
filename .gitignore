@@ -46,3 +46,6 @@ temp/
 docs/screenshots/_draft/
 docs/tmp-shot/
 docs/tmp-profile/
+
+# 作品墙素材（本地生成，不进版本库）
+press/
