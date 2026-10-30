@@ -65,7 +65,7 @@ no administrator rights, no environment rebuild.
 - **Port inspector.** `netstat` plus a single CIM query resolves 68 listening entries to PID,
   process name and full command line in **~600 ms**.
 - **Runtime store.** JDK 8 / 11 / 17 / 21 / 25 and Node 20 / 22 / 24 / 26, streamed from mirror
-  chains on demand — which is why the installer stays at **108 MB**.
+  chains on demand — which is why the installer stays at **107 MB**.
 - **Self-healing.** Broken junctions and stale `Path` entries are repaired at startup.
 - **Native surface.** Pure-white light theme, one-click dark mode from the title bar (also
   follows the system preference), custom title bar, no browser chrome.
@@ -141,7 +141,7 @@ Numbers from a single Windows 11 / i5 machine, warm cache, no antivirus exclusio
 | JDK 21 extraction | ~1 s | 190 MB zip, bsdtar |
 | JDK 21 download | 5.2 MB/s | Azul CDN |
 | Node 22 download | 9.5 MB/s | npmmirror |
-| Installer size | 108 MB | portable and NSIS builds |
+| Installer size | 107 MB | portable and NSIS builds |
 
 ## Runtime store
 
@@ -166,7 +166,7 @@ Full mechanics: [docs/RUNTIME-STORE.md](./docs/RUNTIME-STORE.md).
 | **`JunctionBox-Portable-x64.exe`** | Single file, nothing written system-wide, delete it to uninstall |
 | **`JunctionBox-Setup-x64.exe`** | Start Menu entry, desktop shortcut, custom install directory |
 
-Windows 10 / 11, x64, ~108 MB. Rolling back means installing the older package; junctions and
+Windows 10 / 11, x64, ~107 MB. Rolling back means installing the older package; junctions and
 scan paths survive it.
 
 ```text

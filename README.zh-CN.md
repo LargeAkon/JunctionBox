@@ -62,7 +62,7 @@ Windows 上的端口排查与运行时管理。
 - **端口检测。** `netstat` 加一次 CIM 查询，把 68 条监听记录解析成 PID、进程名与完整命令行，
   耗时 **约 600 ms**。
 - **版本库。** JDK 8 / 11 / 17 / 21 / 25 与 Node 20 / 22 / 24 / 26，按需从镜像链流式下载——
-  安装包因此保持在 **108 MB**。
+  安装包因此保持在 **107 MB**。
 - **启动自愈。** 联接失效、`Path` 残留失效项，启动时自动修复。
 - **原生质感。** 纯白主题，标题栏一键切夜间（也可跟随系统）；自绘标题栏、`frame: false`，
   无浏览器边框。
@@ -136,7 +136,7 @@ Path[0]            %LOCALAPPDATA%\JavaDevTool\links\node   ─┤  NTFS 目录�
 | 解压 JDK 21 | 约 1 s | 190 MB zip，bsdtar |
 | 下载 JDK 21 | 5.2 MB/s | Azul CDN |
 | 下载 Node 22 | 9.5 MB/s | npmmirror |
-| 安装包体积 | 108 MB | 便携版与 NSIS 版 |
+| 安装包体积 | 107 MB | 便携版与 NSIS 版 |
 
 ## 版本库
 
@@ -159,7 +159,7 @@ JDK 走 Azul CDN → 清华镜像，Node 走 npmmirror → 清华 → nodejs.org
 | **`JunctionBox-Portable-x64.exe`** | 单文件，不写系统目录，删掉文件即卸载 |
 | **`JunctionBox-Setup-x64.exe`** | 开始菜单项、桌面快捷方式、自选安装目录 |
 
-Windows 10 / 11，x64，约 108 MB。回退旧版本只需装回旧安装包，联接与扫描路径不受影响。
+Windows 10 / 11，x64，约 107 MB。回退旧版本只需装回旧安装包，联接与扫描路径不受影响。
 
 ```text
 1  运行程序。
