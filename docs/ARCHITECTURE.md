@@ -43,8 +43,8 @@ src/
   store.js        420 行  全局响应式状态（挂到 window.__JDT 便于调试）
   style.css               Fluent 2 设计令牌：颜色、圆角、阴影、缓动
   views/                 PortsView（端口）、JdkView、NodeView、AboutView
-  components/            VersionPanel（切换）、RuntimeStore（版本库）、
-                         InstallLocationDialog（选址）、ConfirmDialog
+  components/            VersionPanel（切换）、RuntimeStore（版本库 + 安装）、
+                         ConfirmDialog
 scripts/
   dev.mjs                npm run dev：Vite 与 Electron 联动
   update-catalog.cjs     npm run catalog:update：重写清单
@@ -91,9 +91,8 @@ scripts/
 | `jdk:switch` / `node:switch` | `core.switchJdk()` / `switchNode()` | 切换版本 |
 | `path:add` / `path:remove` | 内联 | 维护手工登记的扫描目录 |
 | `store:list` | `catalog.list()` + `findJdks()` / `findNodes()` | 清单、已装状态、当前安装位置 |
-| `store:plan` | `installer.suggestRoot()` | 反推安装位置，供选址框使用 |
 | `store:set-root` | `installer.setRoot()` | 记住安装位置（并登记为扫描目录） |
-| `store:pick-root` | 内联 | 目录选择对话框（默认停在建议位置） |
+| `store:pick-root` | 内联 | 目录选择对话框（默认停在当前位置） |
 | `store:install` | `installer.install()` | 下载并安装到指定位置（单飞） |
 | `store:cancel` | `installer.cancel(id)` | 取消进行中的下载 |
 | `store:remove` | `installer.uninstall()` | 删除本程序装过的运行时 |
@@ -303,8 +302,11 @@ Get-CimInstance Win32_Process   ← 一次拿全量进程，建 PID → 命令�
   各页面绝对定位重叠，避免闪烁；`prefers-reduced-motion: reduce` 时全部关闭。
 - 设计令牌集中在 `src/style.css`：纯白 `#ffffff` 底、`#f5f5f7` 凹陷层、`#ececef` 描边，
   主按钮用墨色 `#17171b` 而非品牌蓝，避免与 Java / Node 的标识色抢注意力。
-- 弹层层级：普通对话框 100 以下，版本库 120，选址框 140，确认框 400——
+- 弹层层级：普通对话框 100 以下，版本库 120，确认框 400——
   要压在别的弹层之上，必须比它大。
+- 安装入口只有一个：版本库底部的「安装到」一行。点「安装」直接开下，
+  不再弹二次确认；进度以整行水填充表达（`--accent-soft` 从左铺到右），
+  铺满后收面板，切换留在 Java / Node 页做。
 
 ### 主题
 

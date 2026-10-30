@@ -56,7 +56,7 @@ npm run catalog:update     # 读 Azul 元数据接口与 npmmirror 索引，重�
 
 按优先级：
 
-1. `%APPDATA%\JavaDevTool\roots.json` 里该类型的 `root`（界面点「更改」或确认安装时写入）；
+1. `%APPDATA%\JavaDevTool\roots.json` 里该类型的 `root`（界面点「更改」时写入）；
 2. `%APPDATA%\JavaDevTool\runtimes.txt` 首行的绝对路径（v4.0.0 的老做法，仍然兼容）；
 3. 默认 `%LOCALAPPDATA%\JavaDevTool\runtimes\`。
 
@@ -66,18 +66,15 @@ npm run catalog:update     # 读 Azul 元数据接口与 npmmirror 索引，重�
 { "jdk": "E:\\develop\\Java", "node": "E:\\develop\\node\\versions" }
 ```
 
-### 点「安装」时的推荐逻辑
+### 点「安装」就开始，不再问一遍
 
-`installer.suggestRoot()` 不是猜，是真去数：
+安装位置只有一个入口：版本库底部的「安装到」那一行。点「安装」直接按这里显示的
+路径下载，不弹二次确认 —— 位置就在按钮上方一行，看得见也改得动；改一次写进
+`roots.json`，之后所有安装都沿用它。
 
-1. 用当前扫描结果拿到所有已发现的 JDK / Node 路径；
-2. 按**父目录**分组（`E:\develop\Java\jdk` 与 `E:\develop\Java\jdk8` → `E:\develop\Java`）；
-3. 排除：程序自己的版本库目录、`AppData` 下任何位置、盘符根（`E:\`）、`Program Files`；
-4. 按命中数量排序，数量相同则层级更深的优先；
-5. 对候选目录实际写一个探针文件，确认可写才推荐。
-
-所以你装了 3 个 JDK 在 `E:\develop\Java` 时，它会建议 `E:\develop\Java`，并显示
-「检测到 3 个已有版本」。
+`installer.suggestRoot()`（按父目录分组、按命中数排序、用写探针验可写）仍然保留在
+installer 里并由 `npm test` 覆盖，但界面不再每次安装都问一遍：同一个问题反复问，
+比默认值偏一点更烦人。
 
 ### 目标目录的校验
 

@@ -31,11 +31,11 @@ Windows 上的端口排查与运行时管理。
   </tr>
   <tr>
     <td width="50%"><img src="docs/screenshots/5-store.png" alt="版本库" /></td>
-    <td width="50%"><img src="docs/screenshots/6-location.png" alt="安装位置" /></td>
+    <td width="50%"><img src="docs/screenshots/6-progress.png" alt="安装进度" /></td>
   </tr>
   <tr>
     <td align="center"><sub><b>版本库</b> — 九个运行时，按需下载</sub></td>
-    <td align="center"><sub><b>安装位置</b> — 装前问一次，默认落在你现有的目录</sub></td>
+    <td align="center"><sub><b>安装</b> — 点一下就下，进度铺满整行</sub></td>
   </tr>
   <tr>
     <td width="50%"><img src="docs/screenshots/4-about.png" alt="环境概览" /></td>
@@ -164,8 +164,8 @@ Windows 10 / 11，x64，约 107 MB。回退旧版本只需装回旧安装包，�
 ```text
 1  运行程序。
 2  端口页     看谁占着端口，双击行结束进程。
-3  JDK/Node   选中版本，双击切换。
-4  版本库     没得切？装一个，装完自动切过去。
+3  Java/Node  选中版本，双击切换。
+4  版本库     没得切？装一个，装完回列表切换。
 5  新终端     用 java -version / node -v 验证。
 ```
 

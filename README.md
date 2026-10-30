@@ -32,11 +32,11 @@ no administrator rights, no environment rebuild.
   </tr>
   <tr>
     <td width="50%"><img src="docs/screenshots/5-store.png" alt="Runtime store" /></td>
-    <td width="50%"><img src="docs/screenshots/6-location.png" alt="Install location" /></td>
+    <td width="50%"><img src="docs/screenshots/6-progress.png" alt="Install progress" /></td>
   </tr>
   <tr>
     <td align="center"><sub><b>Store</b> — nine runtimes, downloaded on demand</sub></td>
-    <td align="center"><sub><b>Location</b> — asked once, defaults to your existing folder</sub></td>
+    <td align="center"><sub><b>Install</b> — one click, the row itself fills up</sub></td>
   </tr>
   <tr>
     <td width="50%"><img src="docs/screenshots/4-about.png" alt="Environment" /></td>
@@ -173,7 +173,7 @@ scan paths survive it.
 1  Run the executable.
 2  Ports page     see who holds a port, double-click a row to end the process.
 3  JDK / Node     pick a version, double-click to switch.
-4  Store          nothing to switch to? install one; it switches automatically.
+4  Store          nothing to switch to? install one, then pick it in the list.
 5  New terminal   verify with java -version / node -v.
 ```
 
