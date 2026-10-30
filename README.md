@@ -17,8 +17,6 @@ Switching re-points an NTFS directory junction and takes about **15 ms** —
 
 </div>
 
-![Port inspector](docs/screenshots/1-ports.png)
-
 > The UI ships in Simplified Chinese; an English UI is on the [roadmap](#roadmap).
 > The detailed documents under `docs/` are Chinese only — a [Chinese README](./README.zh-CN.md)
 > mirrors this page.

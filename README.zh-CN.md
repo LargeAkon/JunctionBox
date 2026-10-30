@@ -16,8 +16,6 @@
 
 </div>
 
-![端口检测](docs/screenshots/1-ports.png)
-
 ## 它解决什么
 
 在 Windows 上写代码，这三件事反复浪费时间：
