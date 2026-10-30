@@ -45,6 +45,12 @@ Windows 上的端口排查与运行时管理。
     <td align="center"><sub><b>环境概览</b> — <code>JAVA_HOME</code> 解析结果与当前运行时</sub></td>
     <td align="center"><sub><b>端口</b> — PID 解析到进程名与完整命令行</sub></td>
   </tr>
+  <tr>
+    <td colspan="2" align="center"><img src="docs/screenshots/7-dark.png" alt="夜间模式" width="78%" /></td>
+  </tr>
+  <tr>
+    <td colspan="2" align="center"><sub><b>夜间模式</b> — 标题栏一键切换，也可跟随系统</sub></td>
+  </tr>
 </table>
 
 ## 核心特性
@@ -58,7 +64,8 @@ Windows 上的端口排查与运行时管理。
 - **版本库。** JDK 8 / 11 / 17 / 21 / 25 与 Node 20 / 22 / 24 / 26，按需从镜像链流式下载——
   安装包因此保持在 **108 MB**。
 - **启动自愈。** 联接失效、`Path` 残留失效项，启动时自动修复。
-- **原生质感。** Mica 材质、Fluent 2 动效、自绘标题栏、`frame: false`，无浏览器边框。
+- **原生质感。** 纯白主题，标题栏一键切夜间（也可跟随系统）；自绘标题栏、`frame: false`，
+  无浏览器边框。
 
 ## 实现原理
 
@@ -111,7 +118,7 @@ Path[0]            %LOCALAPPDATA%\JavaDevTool\links\node   ─┤  NTFS 目录�
 | 外壳 | Electron 44.9，Chromium 与 Node 同进程树 |
 | 界面 | Vue 3.5，不引入组件库，每个控件按设计令牌手写 |
 | 构建 | 渲染层 Vite 8，打包 electron-builder 26（NSIS + 便携版） |
-| 样式 | 手写 CSS + Fluent 2 令牌，Mica 通过 `backgroundMaterial` |
+| 样式 | 手写 CSS + 设计令牌，纯白主题 + 夜间模式，不引组件库 |
 | 进程模型 | `contextIsolation: true`、`nodeIntegration: false`、preload 桥 |
 | 系统层 | `child_process`、PowerShell 5.1、.NET Registry API、`netstat`、CIM |
 | 联接层 | NTFS 目录联接（`fs.symlink` 的 `type: "junction"`、`[IO.Directory]`） |

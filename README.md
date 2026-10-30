@@ -46,6 +46,12 @@ no administrator rights, no environment rebuild.
     <td align="center"><sub><b>Environment</b> — resolved <code>JAVA_HOME</code> and active runtimes</sub></td>
     <td align="center"><sub><b>Ports</b> — PID resolved to process and command line</sub></td>
   </tr>
+  <tr>
+    <td colspan="2" align="center"><img src="docs/screenshots/7-dark.png" alt="Dark mode" width="78%" /></td>
+  </tr>
+  <tr>
+    <td colspan="2" align="center"><sub><b>Dark mode</b> — one toggle in the title bar, or follow the system</sub></td>
+  </tr>
 </table>
 
 ## Highlights
@@ -61,8 +67,8 @@ no administrator rights, no environment rebuild.
 - **Runtime store.** JDK 8 / 11 / 17 / 21 / 25 and Node 20 / 22 / 24 / 26, streamed from mirror
   chains on demand — which is why the installer stays at **108 MB**.
 - **Self-healing.** Broken junctions and stale `Path` entries are repaired at startup.
-- **Native surface.** Mica backdrop, Fluent 2 motion, custom title bar, `frame: false`, no
-  browser chrome.
+- **Native surface.** Pure-white light theme, one-click dark mode from the title bar (also
+  follows the system preference), custom title bar, no browser chrome.
 
 ## How it works
 
@@ -117,7 +123,7 @@ replace its environment block.
 | Shell | Electron 44.9, Chromium + Node in one process tree |
 | UI | Vue 3.5, no component library — every control is written against the design tokens |
 | Build | Vite 8 for the renderer, electron-builder 26 for NSIS and portable targets |
-| Styling | Hand-written CSS on Fluent 2 tokens; Mica via `backgroundMaterial` |
+| Styling | Hand-written CSS on design tokens; pure-white theme + dark mode, no UI framework |
 | Process model | `contextIsolation: true`, `nodeIntegration: false`, preload bridge |
 | System layer | `child_process`, PowerShell 5.1, .NET Registry API, `netstat`, CIM |
 | Link layer | NTFS directory junctions (`fs.symlink` with `type: "junction"`, `[IO.Directory]`) |

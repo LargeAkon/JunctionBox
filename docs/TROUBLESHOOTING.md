@@ -95,7 +95,7 @@ Get-ChildItem $links -Force | Select-Object Name, LinkType, Target
 
 ## 4. 界面白屏 / 花屏 / 黑块
 
-**判断**：窗口能打开但内容不渲染，或 Mica 材质区域出现色块。
+**判断**：窗口能打开但内容不渲染，或窗口局部出现色块。
 
 这是 GPU 合成层的问题，常见于旧显卡驱动、远程桌面、虚拟机。程序检测到连续 GPU 崩溃后
 会自动降级为软件渲染，重启一次即可。
@@ -107,7 +107,7 @@ Get-ChildItem $links -Force | Select-Object Name, LinkType, Target
 .\JunctionBox-Portable-x64.exe --disable-gpu
 ```
 
-窗口透明或 Mica 异常（Windows 10 早期版本）：
+窗口局部花屏（部分老显卡驱动）：
 
 ```powershell
 .\JunctionBox-Portable-x64.exe --disable-gpu-compositing

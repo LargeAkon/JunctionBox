@@ -24,7 +24,8 @@ JunctionBox 的代码是怎么组织的、关键决策为什么这么定、Windo
 7. [性能](#7-性能)
 8. [Windows 平台坑](#8-windows-平台坑)
 9. [界面](#9-界面)
-10. [已知限制](#10-已知限制)
+10. [安全边界](#10-安全边界)
+11. [已知限制](#11-已知限制)
 
 ---
 
@@ -32,7 +33,7 @@ JunctionBox 的代码是怎么组织的、关键决策为什么这么定、Windo
 
 ```
 electron/
-  main.cjs       472 行   主进程入口：窗口、Mica、单实例锁、IPC 注册、启动自愈、测试钩子
+  main.cjs       主进程入口：窗口、外观、单实例锁、IPC 注册、启动自愈、测试钩子
   core.cjs       986 行   系统能力层：端口扫描、版本发现、junction 切换、环境变量读写
   installer.cjs  711 行   安装引擎：选址、下载、校验、解压、落位、台账、删除
   catalog.cjs    126 行   版本清单（纯元数据，由 npm run catalog:update 生成）
@@ -69,7 +70,7 @@ scripts/
                    │
 ┌──────────────────┴──────────────────────────┐
 │  Main (main.cjs)                            │
-│  窗口、Mica、单飞锁、启动自愈                 │
+│  窗口、外观、单飞锁、启动自愈                 │
 │  core.cjs / installer.cjs：所有系统调用      │
 └──────────────────┬──────────────────────────┘
                    │ child_process / fs / net
@@ -298,13 +299,55 @@ Get-CimInstance Win32_Process   ← 一次拿全量进程，建 PID → 命令�
 
 - 标题栏自绘，`-webkit-app-region: drag` 实现拖拽，窗口控制按钮单独处理点击区。
 - `show: false` + `ready-to-show`，避免白屏闪烁。
-- 切页不用整页 opacity 过渡，改为元素级 `translateY(6px) → 0`、25 ms 错峰，
-  各页面绝对定位重叠，避免闪烁。
-- 设计令牌集中在 `src/style.css`，遵循 Fluent 2 的圆角、分层与缓动曲线。
+- 切页不用整页 opacity 过渡，改为元素级 `translateY(6px) → 0`、18 ms 错峰，
+  各页面绝对定位重叠，避免闪烁；`prefers-reduced-motion: reduce` 时全部关闭。
+- 设计令牌集中在 `src/style.css`：纯白 `#ffffff` 底、`#f5f5f7` 凹陷层、`#ececef` 描边，
+  主按钮用墨色 `#17171b` 而非品牌蓝，避免与 Java / Node 的标识色抢注意力。
 - 弹层层级：普通对话框 100 以下，版本库 120，选址框 140，确认框 400——
   要压在别的弹层之上，必须比它大。
 
-## 10. 已知限制
+### 主题
+
+窗口背景在 Windows 11 上原本用云母（`backgroundMaterial: 'mica'`），但半透材质会
+把纯白拉成半透灰，与应用自身配色冲突，已移除。现在由主进程直接写窗口背景色：
+浅色 `#ffffff`、夜间 `#0d0d10`，与渲染层的 `--bg` 保持同一值，避免加载瞬间闪色。
+
+主题选择持久化在 `%APPDATA%\JavaDevTool\settings.json`：
+
+```json
+{ "theme": "light" }   // light | dark | system
+```
+
+- 主进程 `themeMode()` 读设置，`system` 时跟随 `nativeTheme.shouldUseDarkColors`。
+- `theme:set` 写入磁盘 → `syncWindowChrome()` 设背景色 → 广播 `theme:changed`，
+  渲染层据此切 `html.dark` 类与 `color-scheme`。三处同步，不留色差。
+- 渲染层只存 `{ mode, dark }` 两个状态，不重复判断系统偏好，避免两边判断不一致。
+- 选 `system` 时监听 `nativeTheme` 的 `updated` 事件重新同步，系统切换深浅色即时生效。
+
+## 10. 安全边界
+
+渲染进程当作不可信区域处理，能力全部收口在主进程：
+
+| 出口 | 策略 |
+|---|---|
+| `contextIsolation` | 开启；`nodeIntegration` 关闭；只经 `preload` 暴露白名单方法 |
+| 外部链接 | `setWindowOpenHandler` 仅放行 `http(s)`，其余拒绝 |
+| 页面跳转 | `will-navigate` 拦截，仅允许 dev server 地址（仅开发期） |
+| `webview` | `will-attach-webview` 直接阻止 |
+| 权限请求 | `setPermissionRequestHandler` 一律回调 `false`（摄像头、通知、剪贴板等） |
+| IPC 路径参数 | `path.isAbsolute` 校验，拒绝相对路径，避免写入无效记录 |
+
+几处容易忽略的边界：
+
+- **`Path` 长度闸门。** 环境块上限 32767 字符，`checkPathSize()` 在写入前拦截超过
+  30000 字符的 `Path`，宁可报错也不写坏用户环境。
+- **结束进程。** `killProcess` 拒绝非整数、`≤ 4` 以及当前进程自身，防止误杀系统进程。
+- **联接切换原子化。** 先建 `link.new` 再 rename 覆盖，不先删；目标已相同时直接返回，
+  零操作。这样任何时刻路径都存在。
+- **删除保护。** 只有安装台账（`installed.json`）里登记过的目录才允许删除，判断在主进程
+  完成，渲染层不猜路径前缀。
+
+## 11. 已知限制
 
 **① 仅支持 Windows。** junction、`netstat` 输出格式、注册表布局都是 Windows 专有。
 macOS / Linux 需要另一套链接方案（symlink + 不同权限模型），不是加个分支能解决的。
