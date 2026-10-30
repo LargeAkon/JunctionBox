@@ -350,9 +350,8 @@ onUnmounted(() => window.removeEventListener("keydown", onKey));
   background: linear-gradient(
     90deg,
     var(--accent-soft) 0%,
-    color-mix(in srgb, var(--accent) 14%, transparent) 100%
+    color-mix(in srgb, var(--accent) 22%, transparent) 100%
   );
-  border-right: 1px solid var(--accent-stroke);
   transition: width 180ms linear;
   pointer-events: none;
 }

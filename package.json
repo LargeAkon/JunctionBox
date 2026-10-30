@@ -1,6 +1,6 @@
 {
   "name": "junctionbox",
-  "version": "4.2.1",
+  "version": "4.2.2",
   "description": "Windows developer toolbox - install and switch JDK / Node.js versions via NTFS junctions, plus port inspection",
   "main": "electron/main.cjs",
   "author": {

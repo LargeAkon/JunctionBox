@@ -64,7 +64,7 @@ function reload() {
           <svg viewBox="0 0 16 16" class="mark"><path d="M7.2 1.6v7.1a1.9 1.9 0 0 1-1.9 1.9 1.9 1.9 0 0 1-1.9-1.9" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/><path d="M11.3 1.4h2.4v6.6a2.3 2.3 0 0 1-4.6 0v-.6" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/><path d="M3 14.2h10" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" opacity=".55"/></svg>
         </div>
         <span class="name">JunctionBox</span>
-        <span class="ver">v{{ S.info?.version || "4.2.1" }}</span>
+        <span class="ver">v{{ S.info?.version || "4.2.2" }}</span>
       </div>
 
       <div class="tright">
@@ -293,26 +293,25 @@ function reload() {
   flex: none;
   display: flex;
   flex-direction: column;
-  padding: 10px;
-  gap: 2px;
+  padding: 12px 10px;
   background: var(--bg-sub);
   border-right: 1px solid var(--stroke);
 }
 .nav-group {
   display: flex;
   flex-direction: column;
-  gap: 2px;
+  gap: 3px;
 }
 .navitem {
   display: flex;
   align-items: center;
-  gap: 9px;
-  height: 34px;
-  padding: 0 10px;
+  gap: 10px;
+  height: 40px;
+  padding: 0 12px;
   border-radius: var(--radius-sm);
   border: 1px solid transparent;
   color: var(--text-2);
-  font-size: 12.5px;
+  font-size: 14px;
   text-align: left;
   transition: background var(--dur-fast) var(--ease), color var(--dur-fast) var(--ease),
     border-color var(--dur-fast) var(--ease);
@@ -350,12 +349,12 @@ function reload() {
 }
 .nav-foot {
   margin-top: auto;
-  padding-top: 8px;
+  padding-top: 10px;
   border-top: 1px solid var(--stroke);
 }
 .navitem.sm {
-  height: 30px;
-  font-size: 12px;
+  height: 34px;
+  font-size: 12.5px;
   color: var(--text-3);
 }
 

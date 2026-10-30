@@ -18,7 +18,6 @@ const npmPrefix = computed(() => S.info?.npmPrefix || "");
 
 <template>
   <VersionPanel
-    title="Node 版本"
     family="Node"
     :current-ver="cur"
     :current-path="S.activeNode.path"

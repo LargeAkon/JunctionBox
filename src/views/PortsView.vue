@@ -47,18 +47,6 @@ onMounted(() => {
 
 <template>
   <section class="page">
-    <header class="ph">
-      <div>
-        <h1>端口检测</h1>
-      </div>
-      <div class="ph-act">
-        <button class="btn" :disabled="S.scanning" @click="refreshPorts()">
-          <svg class="icon" viewBox="0 0 24 24" :class="{ spin: S.scanning }"><path d="M20 11a8 8 0 1 0-1.9 5.2"/><path d="M20 5v6h-6"/></svg>
-          {{ S.scanning ? "扫描中" : "刷新" }}
-        </button>
-      </div>
-    </header>
-
     <div class="toolbar">
       <label class="field search">
         <svg class="icon" viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="m16.5 16.5 4 4"/></svg>
@@ -73,6 +61,11 @@ onMounted(() => {
         <button :class="{ on: filter === 'java' }" @click="filter = 'java'">Java</button>
         <button :class="{ on: filter === 'sys' }" @click="filter = 'sys'">系统</button>
       </div>
+
+      <button class="btn" :disabled="S.scanning" @click="refreshPorts()">
+        <svg class="icon" viewBox="0 0 24 24" :class="{ spin: S.scanning }"><path d="M20 11a8 8 0 1 0-1.9 5.2"/><path d="M20 5v6h-6"/></svg>
+        {{ S.scanning ? "扫描中" : "刷新" }}
+      </button>
 
       <span class="grow"/>
 
@@ -220,7 +213,7 @@ onMounted(() => {
 .thead,
 .row {
   display: grid;
-  grid-template-columns: 62px minmax(110px, 178px) 140px 162px 66px minmax(0, 1fr) 34px;
+  grid-template-columns: 62px minmax(110px, 178px) 96px 162px 66px minmax(0, 1fr) 34px;
   align-items: center;
   gap: 10px;
   padding: 0 10px 0 16px;

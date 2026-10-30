@@ -32,12 +32,6 @@ function open(url) {
 
 <template>
   <section class="page">
-    <header class="ph">
-      <div>
-        <h1>关于</h1>
-      </div>
-    </header>
-
     <div class="grid">
       <!-- 品牌 -->
       <div class="card hero">

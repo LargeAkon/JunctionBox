@@ -79,7 +79,7 @@ html.dark {
 
   --text: #f4f4f6;
   --text-2: #a6a6b0;
-  --text-3: #787883;
+  --text-3: #86868f;
 
   --stroke: #292930;
   --stroke-strong: #3a3a44;
@@ -436,29 +436,14 @@ button {
 /* 页面头部：标题 + 说明 + 右侧操作 */
 .ph {
   display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
+  align-items: center;
   gap: 16px;
-  padding: 2px 0 16px;
-}
-.ph h1 {
-  font-family: var(--font-display);
-  font-size: 20px;
-  line-height: 26px;
-  font-weight: 600;
-  letter-spacing: -0.3px;
-  color: var(--text);
-}
-.ph p {
-  margin-top: 4px;
-  font-size: 12.5px;
-  color: var(--text-3);
+  padding: 2px 0 14px;
 }
 .ph-act {
   display: flex;
   align-items: center;
   gap: 7px;
-  padding-top: 1px;
 }
 
 /* 页面切换：只做位移，不做透明度，避免文字发虚 */

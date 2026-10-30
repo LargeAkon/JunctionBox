@@ -2,8 +2,6 @@
 import { computed, ref } from "vue";
 
 const props = defineProps({
-  title: String,
-  subtitle: String,
   family: { type: String, default: "" },
   currentVer: String,
   currentPath: String,
@@ -36,10 +34,6 @@ function doSwitch() {
 <template>
   <section class="page">
     <header class="ph">
-      <div>
-        <h1>{{ title }}</h1>
-        <p v-if="subtitle">{{ subtitle }}</p>
-      </div>
       <div class="ph-act">
         <button class="btn primary-soft" @click="emit('store')">
           <svg class="icon" viewBox="0 0 24 24"><path d="M4 8h16v9a1.5 1.5 0 0 1-1.5 1.5h-13A1.5 1.5 0 0 1 4 17z"/><path d="M4 8V6.5A1.5 1.5 0 0 1 5.5 5H9l1.5 3"/></svg>
@@ -55,23 +49,15 @@ function doSwitch() {
       </div>
     </header>
 
-    <!-- 当前生效版本 -->
-    <div class="current">
-      <div class="cl">
-        <span class="cur-label">当前生效</span>
-        <div class="cur-ver">
-          <span v-if="currentVer">{{ currentVer }}</span>
-          <span v-else class="none">未检测到</span>
-        </div>
-        <div class="cur-path selectable" :title="currentPath">{{ currentPath || "PATH 中未找到可执行文件" }}</div>
-      </div>
-      <div class="cr">
-        <em v-if="currentVer" class="chip ok">正在使用</em>
-        <div v-if="noteValue" class="cur-note">
-          <span>{{ noteLabel }}</span>
-          <b class="selectable" :title="noteValue">{{ noteValue }}</b>
-        </div>
-      </div>
+    <!-- 当前生效：一条与版本行同尺度的摘要条，不再单独做大卡 -->
+    <div class="cur">
+      <span class="cur-tag">当前生效</span>
+      <b class="cur-ver" :class="{ none: !currentVer }">{{ currentVer || "未检测到" }}</b>
+      <span class="cur-path selectable" :title="currentPath">{{ currentPath || "PATH 中未找到可执行文件" }}</span>
+      <span v-if="noteValue" class="cur-note">
+        <span class="nl">{{ noteLabel }}</span>
+        <b class="selectable" :title="noteValue">{{ noteValue }}</b>
+      </span>
     </div>
 
     <!-- 只有 0~1 个版本时的引导 -->
@@ -107,18 +93,16 @@ function doSwitch() {
         @dblclick="dbl(it)"
       >
         <span class="bar"/>
-        <div class="vmain">
-          <div class="vline1">
-            <b class="vver">{{ it.ver }}</b>
-            <span v-if="it.impl" class="vven">{{ it.impl }}</span>
-            <em v-if="it.arch" class="chip">{{ it.arch }}</em>
-          </div>
-          <div class="vpath selectable" :title="it.path">{{ it.path }}</div>
-        </div>
-        <div class="vmeta">
+        <b class="vver">{{ it.ver }}</b>
+        <span class="vtag">
+          <span v-if="it.impl" class="vven">{{ it.impl }}</span>
+          <em v-if="it.arch" class="chip">{{ it.arch }}</em>
+        </span>
+        <span class="vpath selectable" :title="it.path">{{ it.path }}</span>
+        <span class="vmeta">
           <em v-if="isActive(it)" class="chip ok">当前使用</em>
           <em v-else-if="sel === it.path" class="chip accent">已选择</em>
-        </div>
+        </span>
         <button class="vgo" :disabled="isActive(it)" title="切换到这个版本" @click.stop="dbl(it)">
           <svg class="icon" viewBox="0 0 24 24"><path d="M9 6l6 6-6 6"/></svg>
         </button>
@@ -136,73 +120,68 @@ function doSwitch() {
   color: var(--text-2);
 }
 
-/* 当前版本卡：扁平、靠排版分层，不用渐变和投影 */
-.current {
+/* 当前生效摘要条：与版本行同高、同一套栅格语言，靠沉底色区分层级 */
+.cur {
   display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
-  gap: 20px;
-  padding: 16px 18px;
-  margin-bottom: 14px;
-  border-radius: var(--radius-lg);
+  align-items: center;
+  gap: 12px;
+  height: 46px;
+  padding: 0 16px;
+  margin-bottom: 10px;
+  border-radius: var(--radius);
   border: 1px solid var(--stroke);
-  background: var(--layer);
+  background: var(--bg-sunken);
 }
-.cl {
-  min-width: 0;
-}
-.cur-label {
+.cur-tag {
+  flex: none;
   font-size: 11px;
   font-weight: 600;
   letter-spacing: 0.4px;
   color: var(--text-3);
-  text-transform: uppercase;
 }
 .cur-ver {
-  margin-top: 3px;
+  flex: none;
   font-family: var(--font-display);
-  font-size: 26px;
-  line-height: 32px;
+  font-size: 13.5px;
   font-weight: 600;
-  letter-spacing: -0.6px;
+  letter-spacing: -0.2px;
   color: var(--text);
   font-variant-numeric: tabular-nums;
 }
-.cur-ver .none {
-  font-size: 18px;
+.cur-ver.none {
   color: var(--text-3);
+  font-weight: 500;
 }
 .cur-path {
-  margin-top: 3px;
+  flex: 1 1 auto;
+  min-width: 0;
   font-family: var(--font-mono);
-  font-size: 11px;
+  font-size: 11.5px;
   color: var(--text-3);
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
-.cr {
-  flex: none;
-  display: flex;
-  flex-direction: column;
-  align-items: flex-end;
-  gap: 8px;
-  max-width: 46%;
-  text-align: right;
-}
 .cur-note {
+  flex: 1 1 auto;
+  min-width: 0;
   display: flex;
-  flex-direction: column;
-  gap: 1px;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 7px;
+  overflow: hidden;
+}
+.cur-note .nl {
+  flex: none;
   font-size: 10.5px;
   color: var(--text-3);
 }
 .cur-note b {
   font-family: var(--font-mono);
   font-weight: 500;
-  font-size: 10.5px;
+  font-size: 11px;
   color: var(--text-2);
-  max-width: 260px;
+  min-width: 0;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -277,10 +256,12 @@ function doSwitch() {
 
 .vrow {
   position: relative;
+  flex: none;
   display: flex;
   align-items: center;
-  gap: 14px;
-  padding: 11px 14px 11px 16px;
+  gap: 12px;
+  height: 46px;
+  padding: 0 14px 0 16px;
   border-radius: var(--radius);
   border: 1px solid var(--stroke);
   background: var(--layer);
@@ -315,30 +296,42 @@ function doSwitch() {
   height: 22px;
 }
 
-.vmain {
-  flex: 1;
-  min-width: 0;
-}
-.vline1 {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
+/* 单行栅格：版本号 / 厂商与架构 / 路径 / 徽章 / 操作，全部固定站位 */
 .vver {
+  flex: none;
+  width: 104px;
   font-family: var(--font-display);
-  font-size: 14px;
+  font-size: 13.5px;
   font-weight: 600;
+  letter-spacing: -0.2px;
   color: var(--text);
   font-variant-numeric: tabular-nums;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.vtag {
+  flex: none;
+  width: 182px;
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  overflow: hidden;
 }
 .vven {
+  flex: none;
+  width: 114px;
   font-size: 11.5px;
   color: var(--text-3);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 .vpath {
-  margin-top: 2px;
+  flex: 1;
+  min-width: 0;
   font-family: var(--font-mono);
-  font-size: 11px;
+  font-size: 11.5px;
   color: var(--text-3);
   overflow: hidden;
   text-overflow: ellipsis;
@@ -347,16 +340,15 @@ function doSwitch() {
 
 .vmeta {
   flex: none;
+  width: 84px;
   display: flex;
   align-items: center;
   justify-content: flex-end;
-  gap: 6px;
-  min-width: 74px;
 }
 .vgo {
   flex: none;
-  width: 24px;
-  height: 24px;
+  width: 26px;
+  height: 26px;
   border-radius: var(--radius-xs);
   display: grid;
   place-items: center;
